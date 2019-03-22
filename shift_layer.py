@@ -13,10 +13,14 @@ class MyLayer(Layer):
                                       shape=(input_shape[1], self.output_dim),
                                       initializer='uniform',
                                       trainable=True)
+        self.bias = self.add_weight(name='bias', 
+                                    shape=(1, self.output_dim),
+                                    initializer='uniform',
+                                    trainable=True)
         super(MyLayer, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, x):
-        return K.dot(x, self.kernel)
+        return K.dot(x, self.kernel) + self.bias
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.output_dim)
