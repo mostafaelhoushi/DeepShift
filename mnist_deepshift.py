@@ -9,8 +9,10 @@ from __future__ import print_function
 import keras
 from keras.datasets import mnist
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Dropout, Activation
 from keras.optimizers import RMSprop
+
+from shift_layer import *
 
 batch_size = 128
 num_classes = 10
@@ -33,7 +35,9 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
-model.add(Dense(512, activation='relu', input_shape=(784,)))
+#model.add(Dense(512, activation='relu', input_shape=(784,)))
+model.add(MyLayer(512, input_shape=(784,)))
+model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(512, activation='relu'))
 model.add(Dropout(0.2))
