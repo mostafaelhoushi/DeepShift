@@ -36,7 +36,7 @@ y_test = keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
 #model.add(Dense(512, activation='relu', input_shape=(784,)))
-model.add(MyLayer(512, input_shape=(784,)))
+model.add(DenseShift(512, input_shape=(784,)))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(512, activation='relu'))
