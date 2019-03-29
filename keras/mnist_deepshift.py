@@ -10,7 +10,7 @@ import keras
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, Activation
-from keras.optimizers import RMSprop
+from keras.optimizers import *
 
 from shift_layer import *
 
@@ -27,10 +27,10 @@ epochs = 20
 
 x_train = x_train.reshape(60000, 784)
 x_test = x_test.reshape(10000, 784)
-#x_train = x_train.astype('float32')
-#x_test = x_test.astype('float32')
-#x_train /= 255
-#x_test /= 255
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+x_train /= 255
+x_test /= 255
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
@@ -39,13 +39,14 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
-#model.add(Dense(512, activation='relu', input_shape=(784,)))
-model.add(DenseShift(512, input_shape=(784,)))
+model.add(Dense(512, activation='relu', input_shape=(784,)))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(512, activation='relu'))
 model.add(Dropout(0.2))
-model.add(Dense(num_classes, activation='softmax'))
+#model.add(Dense(num_classes))
+model.add(DenseShift(num_classes))
+model.add(Activation('softmax'))
 
 model.summary()
 
