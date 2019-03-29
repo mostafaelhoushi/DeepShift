@@ -14,6 +14,10 @@ from keras.optimizers import RMSprop
 
 from shift_layer import *
 
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 batch_size = 128
 num_classes = 10
 epochs = 20
@@ -23,10 +27,10 @@ epochs = 20
 
 x_train = x_train.reshape(60000, 784)
 x_test = x_test.reshape(10000, 784)
-x_train = x_train.astype('float32')
-x_test = x_test.astype('float32')
-x_train /= 255
-x_test /= 255
+#x_train = x_train.astype('float32')
+#x_test = x_test.astype('float32')
+#x_train /= 255
+#x_test /= 255
 print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
