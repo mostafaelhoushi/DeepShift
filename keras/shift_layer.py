@@ -23,12 +23,11 @@ class DenseShift(Layer):
 
         self.twos = K.ones(shape=self.shift.shape)*2
 
-        super(DenseShift, self).build(input_shape)  # Be sure to call this at the end
+        super(DenseShift, self).build(input_shape) 
 
     def call(self, x):
         W = K.pow(self.twos, self.shift)
-        return K.dot(x,W)
-        #return tf.bitwise.right_shift(tf.dtypes.cast(x, tf.int8), tf.dtypes.cast(self.shift, tf.int8)) + self.bias
+        return K.dot(x,W) + self.bias
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0], self.output_dim)
