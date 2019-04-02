@@ -43,6 +43,8 @@ import numpy as np
 import os
 import argparse
 
+from shift_layer import *
+
 # Script Arguments: n, version
 # n: Model parameter
 # ----------------------------------------------------------------------------
@@ -432,9 +434,9 @@ def resnet_v2(input_shape, depth, num_classes=10):
     x = AveragePooling2D(pool_size=8)(x)
     x = Flatten()(x)
     y = Flatten()(x)
-    outputs = Dense(num_classes,
-                    activation='softmax',
-                    kernel_initializer='he_normal')(y)
+    #outputs = Dense(num_classes, activation='softmax', kernel_initializer='he_normal')(y)
+    y = DenseShift(num_classes)(y)
+    outputs = activation.softmax()(y)
 
     # Instantiate model.
     model = Model(inputs=inputs, outputs=outputs)
