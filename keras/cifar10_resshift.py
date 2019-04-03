@@ -44,6 +44,7 @@ import os
 import argparse
 
 from shift_layer import *
+from convolutional_shift import *
 
 # Script Arguments: n, version
 # n: Model parameter
@@ -241,7 +242,8 @@ def resnet_layer(inputs,
                  strides=1,
                  activation='relu',
                  batch_normalization=True,
-                 conv_first=True):
+                 conv_first=True,
+                 use_shift=False):
     """2D Convolution-Batch Normalization-Activation stack builder
     # Arguments
         inputs (tensor): input tensor from input image or previous layer
@@ -255,12 +257,20 @@ def resnet_layer(inputs,
     # Returns
         x (tensor): tensor as input to the next layer
     """
-    conv = Conv2D(num_filters,
-                  kernel_size=kernel_size,
-                  strides=strides,
-                  padding='same',
-                  kernel_initializer='he_normal',
-                  kernel_regularizer=l2(1e-4))
+    
+    if use_shift == False:
+        conv = Conv2D(num_filters,
+                    kernel_size=kernel_size,
+                    strides=strides,
+                    padding='same',
+                    kernel_initializer='he_normal',
+                    kernel_regularizer=l2(1e-4))
+    else:
+        conv = Conv2DShift(num_filters,
+                        kernel_size=kernel_size,
+                        strides=strides,
+                        padding='same',
+                        kernel_regularizer=l2(1e-4))
 
     x = inputs
     if conv_first:
@@ -317,12 +327,17 @@ def resnet_v1(input_shape, depth, num_classes=10):
             strides = 1
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 strides = 2  # downsample
+
+            use_shift = (stack > 1)
+
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
-                             strides=strides)
+                             strides=strides,
+                             use_shift=use_shift)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
-                             activation=None)
+                             activation=None,
+                             use_shift=use_shift)
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 # linear projection residual shortcut connection to match
                 # changed dims
@@ -331,7 +346,8 @@ def resnet_v1(input_shape, depth, num_classes=10):
                                  kernel_size=1,
                                  strides=strides,
                                  activation=None,
-                                 batch_normalization=False)
+                                 batch_normalization=False,
+                                 use_shift=use_shift)
             x = keras.layers.add([x, y])
             x = Activation('relu')(x)
         num_filters *= 2
@@ -340,9 +356,11 @@ def resnet_v1(input_shape, depth, num_classes=10):
     # v1 does not use BN after last shortcut connection-ReLU
     x = AveragePooling2D(pool_size=8)(x)
     y = Flatten()(x)
-    outputs = Dense(num_classes, 
-                    activation='softmax',
-                    kernel_initializer='he_normal')(y)
+    #outputs = Dense(num_classes, 
+    #                activation='softmax',
+    #                kernel_initializer='he_normal')(y)
+    y = DenseShift(num_classes)(y)
+    outputs = Activation('softmax')(y)
 
     # Instantiate model.
     model = Model(inputs=inputs, outputs=outputs)
@@ -432,11 +450,10 @@ def resnet_v2(input_shape, depth, num_classes=10):
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = AveragePooling2D(pool_size=8)(x)
-    x = Flatten()(x)
     y = Flatten()(x)
     #outputs = Dense(num_classes, activation='softmax', kernel_initializer='he_normal')(y)
     y = DenseShift(num_classes)(y)
-    outputs = activation.softmax()(y)
+    outputs = Activation('softmax')(y)
 
     # Instantiate model.
     model = Model(inputs=inputs, outputs=outputs)
