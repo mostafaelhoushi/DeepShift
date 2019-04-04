@@ -328,7 +328,7 @@ def resnet_v1(input_shape, depth, num_classes=10):
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 strides = 2  # downsample
 
-            use_shift = (stack > 1)
+            use_shift = (stack > 1 and res_block == num_res_blocks-1)
 
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
