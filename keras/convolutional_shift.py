@@ -1,12 +1,46 @@
 from keras.layers.convolutional import _Conv
 from keras.legacy import interfaces
+from keras.engine.base_layer import InputSpec
 from shift_layer import *
 
 class _ConvShift(_Conv):
     # TODO: Handle if different initializer or constraint is passed
-    def build(self, input_shape):
-        super(_ConvShift, self).build(input_shape) 
+    def __init__(self, rank,
+                 filters,
+                 kernel_size,
+                 strides=1,
+                 padding='valid',
+                 data_format=None,
+                 dilation_rate=1,
+                 activation=None,
+                 use_bias=True,
+                 kernel_initializer='glorot_uniform',
+                 bias_initializer='zeros',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 kernel_constraint=None,
+                 bias_constraint=None,
+                 **kwargs):
+        super(_ConvShift, self).__init__(rank=rank,
+                                         filters=filters,
+                                         kernel_size=kernel_size,
+                                         strides=strides,
+                                         padding=padding,
+                                         data_format=data_format,
+                                         dilation_rate=dilation_rate,
+                                         activation=activation,
+                                         use_bias=use_bias,
+                                         kernel_initializer=kernel_initializer,
+                                         bias_initializer=bias_initializer,
+                                         kernel_regularizer=kernel_regularizer,
+                                         bias_regularizer=bias_regularizer,
+                                         activity_regularizer=activity_regularizer,
+                                         kernel_constraint=kernel_constraint,
+                                         bias_constraint=bias_constraint,
+                                         **kwargs)
 
+    def build(self, input_shape):
         if self.data_format == 'channels_first':
             channel_axis = 1
         else:
@@ -17,6 +51,7 @@ class _ConvShift(_Conv):
         input_dim = input_shape[channel_axis]
         kernel_shape = self.kernel_size + (input_dim, self.filters)
 
+
         # Overwrite kernel to be shifts only
         self.kernel = self.add_weight(shape=kernel_shape,
                                       initializer=randpsuedoint,
@@ -25,6 +60,19 @@ class _ConvShift(_Conv):
                                       constraint=IntegerConstraint())
 
         self.twos = K.ones(shape=self.kernel.shape)*2
+
+        if self.use_bias:
+            self.bias = self.add_weight(shape=(self.filters,),
+                                        initializer=self.bias_initializer,
+                                        name='bias',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint)
+        else:
+            self.bias = None
+        # Set input spec.
+        self.input_spec = InputSpec(ndim=self.rank + 2,
+                                    axes={channel_axis: input_dim})
+        self.built = True
 
     # Overwrite call to perform bit shifts instead of multiplcations
     def call(self, inputs):
