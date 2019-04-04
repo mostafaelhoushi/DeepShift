@@ -39,13 +39,13 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
-model.add(Dense(512, input_shape=(784,)))
+model.add(DenseShift(512, input_shape=(784,)))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(DenseShift(512)) #model.add(Dense(512))
+model.add(DenseShift(512)) 
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(DenseShift(num_classes)) #model.add(Dense(num_classes))
+model.add(DenseShift(num_classes)) 
 model.add(Activation('softmax'))
 
 model.summary()
@@ -66,4 +66,4 @@ print('Test accuracy:', score[1])
 for layer in model.layers:
     print("Layer: " + layer.name)
     for index, w in enumerate(layer.get_weights()):
-        print("\t" + "weight_" + str(index) + ": " +  str(w))
+        np.savetxt(layer.name + str(index) + ".csv", w)

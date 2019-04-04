@@ -4,15 +4,31 @@ import tensorflow as tf
 import numpy as np
 
 import keras.constraints
+from keras.initializers import RandomUniform
 from keras.constraints import Constraint
 from keras.regularizers import L1L2
 
 class IntegerConstraint (Constraint):
-    def __call__(self, w):
-        return K.round(w)
+    def __init__(self, low=None, high=None, **kwargs):
+        super(IntegerConstraint, self).__init__(**kwargs)
+        self.low = low
+        self.high = high
 
-def randpsuedoint(shape, low=-10, high=-1):
-    return K.round(K.random_uniform_variable(shape, low=low, high=high)) # K.round(K.random_normal(shape, dtype))
+    def __call__(self, w):
+        res = K.round(w)
+        if self.low is not None:
+            res *= K.cast(K.greater_equal(res, self.low), K.floatx())
+        if self.high is not None:
+            res *= K.cast(K.less_equal(res, self.high), K.floatx())
+
+        return res
+
+class RoundedRandomUniform(RandomUniform):
+    def __init__(self, minval=-10, maxval=-1, seed=None):
+        super(RoundedRandomUniform, self).__init__(minval, maxval, seed)
+
+    def __call__(self, shape, dtype=None):
+        return K.round(super(RoundedRandomUniform, self).__call__(shape, dtype))
 
 class L1L2_PowerOf2(L1L2):
     """Regularizer for L1 and L2 regularization for shift weights.
@@ -53,19 +69,26 @@ class DenseShift(Layer):
                                       shape=(input_shape[1], self.output_dim),
                                       constraint=IntegerConstraint(),
                                       #dtype=tf.int32,
-                                      initializer=randpsuedoint,
+                                      initializer=RoundedRandomUniform(),
                                       trainable=True)
+        self.sign = self.add_weight(name='sign', 
+                                      shape=(input_shape[1], self.output_dim),
+                                      constraint=IntegerConstraint(0,1),
+                                      #dtype=tf.int32,
+                                      initializer=RoundedRandomUniform(0,1),
+                                      trainable=True)                        
         self.bias = self.add_weight(name='bias', 
                                     shape=(1, self.output_dim),
                                     initializer='uniform',
                                     trainable=True)
 
         self.twos = K.ones(shape=self.shift.shape)*2
+        self.minusones = K.ones(shape=self.sign.shape)*-1
 
         super(DenseShift, self).build(input_shape) 
 
     def call(self, x):
-        W = K.pow(self.twos, self.shift)
+        W = K.pow(self.twos, self.shift) * K.pow(self.minusones, self.sign)
         return K.dot(x,W) + self.bias
 
     def compute_output_shape(self, input_shape):

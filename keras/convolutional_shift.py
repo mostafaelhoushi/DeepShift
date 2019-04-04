@@ -14,7 +14,7 @@ class _ConvShift(_Conv):
                  dilation_rate=1,
                  activation=None,
                  use_bias=True,
-                 kernel_initializer=randpsuedoint,
+                 kernel_initializer=RoundedRandomUniform(),
                  bias_initializer='zeros',
                  kernel_regularizer=None,
                  bias_regularizer=None,
