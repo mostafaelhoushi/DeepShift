@@ -59,7 +59,15 @@ class _ConvShift(_Conv):
                                       regularizer=self.kernel_regularizer,
                                       constraint=self.kernel_constraint)
 
+        self.sign = self.add_weight(shape=kernel_shape,
+                                      initializer=RoundedRandomUniform(0,1),
+                                      name='sign',
+                                      regularizer=None,
+                                      constraint=IntegerConstraint(0,1),
+                                      trainable=True)    
+
         self.twos = K.ones(shape=self.kernel.shape)*2
+        self.minusones = K.ones(shape=self.sign.shape)*-1
 
         if self.use_bias:
             self.bias = self.add_weight(shape=(self.filters,),
@@ -76,7 +84,7 @@ class _ConvShift(_Conv):
 
     # Overwrite call to perform bit shifts instead of multiplcations
     def call(self, inputs):
-        W = K.pow(self.twos, self.kernel)
+        W = K.pow(self.twos, self.kernel) * K.pow(self.minusones, self.sign)
 
         if self.rank == 1:
             outputs = K.conv1d(
