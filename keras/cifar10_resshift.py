@@ -276,7 +276,7 @@ def resnet_layer(inputs,
                         kernel_size=kernel_size,
                         strides=strides,
                         padding='same',
-                        kernel_regularizer=l2(1e-4))
+                        kernel_regularizer=l2_powerof2(1e-4))
 
     x = inputs
     if conv_first:

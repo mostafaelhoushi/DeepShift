@@ -5,13 +5,41 @@ import numpy as np
 
 import keras.constraints
 from keras.constraints import Constraint
+from keras.regularizers import L1L2
 
 class IntegerConstraint (Constraint):
     def __call__(self, w):
         return K.round(w)
 
-def randpsuedoint(shape):
-    return K.round(K.random_uniform_variable(shape, low=-10, high=-1)) # K.round(K.random_normal(shape, dtype))
+def randpsuedoint(shape, low=-10, high=-1):
+    return K.round(K.random_uniform_variable(shape, low=low, high=high)) # K.round(K.random_normal(shape, dtype))
+
+class L1L2_PowerOf2(L1L2):
+    """Regularizer for L1 and L2 regularization for shift weights.
+    # Arguments
+        l1: Float; L1 regularization factor.
+        l2: Float; L2 regularization factor.
+    """
+    def __call__(self, x):
+        twos = K.ones(shape=x.shape)*2
+        twos_power_of_x = K.pow(twos, x)
+        regularization = 0.
+        if self.l1:
+            regularization += K.sum(self.l1 * K.abs(twos_power_of_x))
+        if self.l2:
+            regularization += K.sum(self.l2 * K.square(twos_power_of_x))
+        return regularization
+
+def l1_powerof2(l=0.01):
+    return L1L2_PowerOf2(l1=l)
+
+
+def l2_powerof2(l=0.01):
+    return L1L2_PowerOf2(l2=l)
+
+
+def l1_l2_powerof2(l1=0.01, l2=0.01):
+    return L1L2_PowerOf2(l1=l1, l2=l2)
 
 class DenseShift(Layer):
 

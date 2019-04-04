@@ -14,12 +14,12 @@ class _ConvShift(_Conv):
                  dilation_rate=1,
                  activation=None,
                  use_bias=True,
-                 kernel_initializer='glorot_uniform',
+                 kernel_initializer=randpsuedoint,
                  bias_initializer='zeros',
                  kernel_regularizer=None,
                  bias_regularizer=None,
                  activity_regularizer=None,
-                 kernel_constraint=None,
+                 kernel_constraint=IntegerConstraint(),
                  bias_constraint=None,
                  **kwargs):
         super(_ConvShift, self).__init__(rank=rank,
@@ -54,10 +54,10 @@ class _ConvShift(_Conv):
 
         # Overwrite kernel to be shifts only
         self.kernel = self.add_weight(shape=kernel_shape,
-                                      initializer=randpsuedoint,
+                                      initializer=self.kernel_initializer,
                                       name='kernel',
                                       regularizer=self.kernel_regularizer,
-                                      constraint=IntegerConstraint())
+                                      constraint=self.kernel_constraint)
 
         self.twos = K.ones(shape=self.kernel.shape)*2
 
