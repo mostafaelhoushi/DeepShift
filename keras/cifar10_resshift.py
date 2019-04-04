@@ -65,7 +65,7 @@ from convolutional_shift import *
 # version: Model version
 # Orig paper: version = 1 (ResNet v1), Improved ResNet: version = 2 (ResNet v2)
 
-def cifar10_resnet(n = 3, version = 1):
+def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy'):
 	# Training parameters
 	batch_size = 32  # orig paper trained all networks with batch_size=128
 	epochs = 200
@@ -114,7 +114,7 @@ def cifar10_resnet(n = 3, version = 1):
 	else:
 		model = resnet_v1(input_shape=input_shape, depth=depth)
 
-	model.compile(loss='categorical_crossentropy',
+	model.compile(loss=loss,
 				  optimizer=Adam(lr=lr_schedule(0)),
 				  metrics=['accuracy'])
 	model.summary()
@@ -122,7 +122,7 @@ def cifar10_resnet(n = 3, version = 1):
 
 	# Prepare model model saving directory.
 	save_dir = os.path.join(os.getcwd(), 'saved_models')
-	model_name = 'cifar10_%s_model' % model_type
+	model_name = 'cifar10_%s_%s_model' % (model_type,loss)
 	model_checkpoint_name = model_name + '.{epoch:03d}.h5'
 	if not os.path.isdir(save_dir):
 		os.makedirs(save_dir)
@@ -469,9 +469,9 @@ if __name__== "__main__":
 	parser = argparse.ArgumentParser(description='Train various versions of ResNet on CIFAR10 data.')
 	
 	parser.add_argument('--n', type=int, default=3, help='Model parameter (default: 3)')
-						
 	parser.add_argument('--version', type=int, default=1, help='Model version (default: 1)')
+	parser.add_argument('--loss', default="categorical_crossentropy", help=' loss (default: ''categorical_crossentropy'')')
 
 	args = parser.parse_args()
 	
-	cifar10_resnet(args.n, args.version)
+	cifar10_resnet(args.n, args.version, args.loss)
