@@ -65,7 +65,7 @@ from convolutional_shift import *
 # version: Model version
 # Orig paper: version = 1 (ResNet v1), Improved ResNet: version = 2 (ResNet v2)
 
-def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy'):
+def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_depth=0):
 	# Training parameters
 	batch_size = 32  # orig paper trained all networks with batch_size=128
 	epochs = 200
@@ -112,7 +112,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy'):
 	if version == 2:
 		model = resnet_v2(input_shape=input_shape, depth=depth)
 	else:
-		model = resnet_v1(input_shape=input_shape, depth=depth)
+		model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 
 	model.compile(loss=loss,
 				  optimizer=Adam(lr=lr_schedule(0)),
@@ -122,7 +122,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy'):
 
 	# Prepare model model saving directory.
 	save_dir = os.path.join(os.getcwd(), 'saved_models')
-	model_name = 'cifar10_%s_%s_model' % (model_type,loss)
+	model_name = 'cifar10_%s_%s_model_shift_%s' % (model_type,loss,shift_depth)
 	model_checkpoint_name = model_name + '.{epoch:03d}.h5'
 	if not os.path.isdir(save_dir):
 		os.makedirs(save_dir)
@@ -146,7 +146,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy'):
 								   patience=5,
 								   min_lr=0.5e-6)
 								   
-	csv_logger = CSVLogger(os.path.join(save_dir,model_type+"_train_log.csv"))
+	csv_logger = CSVLogger(os.path.join(save_dir,model_name+"_train_log.csv"))
 
 	callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
 
@@ -294,7 +294,7 @@ def resnet_layer(inputs,
     return x
 
 
-def resnet_v1(input_shape, depth, num_classes=10):
+def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
     """ResNet Version 1 Model builder [a]
     Stacks of 2 x (3 x 3) Conv2D-BN-ReLU
     Last ReLU is after the shortcut connection.
@@ -327,6 +327,9 @@ def resnet_v1(input_shape, depth, num_classes=10):
 
     inputs = Input(shape=input_shape)
     x = resnet_layer(inputs=inputs)
+
+    conv_so_far = 0
+    use_shift = False
     # Instantiate the stack of residual units
     for stack in range(3):
         for res_block in range(num_res_blocks):
@@ -334,16 +337,20 @@ def resnet_v1(input_shape, depth, num_classes=10):
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 strides = 2  # downsample
 
-            use_shift = (stack > 1) # and res_block == num_res_blocks-1)
-
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
                              strides=strides,
                              use_shift=use_shift)
+            conv_so_far += 1
+            use_shift = (depth - conv_so_far <= shift_depth)
+
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
                              activation=None,
                              use_shift=use_shift)
+            conv_so_far += 1
+            use_shift = (depth - conv_so_far <= shift_depth)
+
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 # linear projection residual shortcut connection to match
                 # changed dims
@@ -354,6 +361,9 @@ def resnet_v1(input_shape, depth, num_classes=10):
                                  activation=None,
                                  batch_normalization=False,
                                  use_shift=use_shift)
+                conv_so_far += 1
+                use_shift = (depth - conv_so_far <= shift_depth)
+
             x = keras.layers.add([x, y])
             x = Activation('relu')(x)
         num_filters *= 2
@@ -470,8 +480,9 @@ if __name__== "__main__":
 	
 	parser.add_argument('--n', type=int, default=3, help='Model parameter (default: 3)')
 	parser.add_argument('--version', type=int, default=1, help='Model version (default: 1)')
-	parser.add_argument('--loss', default="categorical_crossentropy", help=' loss (default: ''categorical_crossentropy'')')
+	parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
+	parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 10)')
 
 	args = parser.parse_args()
 	
-	cifar10_resnet(args.n, args.version, args.loss)
+	cifar10_resnet(args.n, args.version, args.loss, args.shift_depth)
