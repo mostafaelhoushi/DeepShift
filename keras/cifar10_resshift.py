@@ -122,13 +122,19 @@ def cifar10_resnet(n = 3, version = 1):
 
 	# Prepare model model saving directory.
 	save_dir = os.path.join(os.getcwd(), 'saved_models')
-	model_name = 'cifar10_%s_model.{epoch:03d}.h5' % model_type
+	model_name = 'cifar10_%s_model' % model_type
+	model_checkpoint_name = model_name + '.{epoch:03d}.h5'
 	if not os.path.isdir(save_dir):
 		os.makedirs(save_dir)
-	filepath = os.path.join(save_dir, model_name)
+	model_checkpoint_path = os.path.join(save_dir, model_checkpoint_name)
+
+	model_summary_name = model_name + '.summary.txt'
+	model_summary_path = os.path.join(save_dir, model_summary_name)
+	with open(model_summary_path, 'w') as fp: 
+		model.summary(print_fn=lambda x: fp.write(x + '\n'))
 
 	# Prepare callbacks for model saving and for learning rate adjustment.
-	checkpoint = ModelCheckpoint(filepath=filepath,
+	checkpoint = ModelCheckpoint(filepath=model_checkpoint_path,
 								 monitor='val_acc',
 								 verbose=1,
 								 save_best_only=True)
