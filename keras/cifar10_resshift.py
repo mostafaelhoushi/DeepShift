@@ -326,34 +326,40 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
     num_res_blocks = int((depth - 2) / 6)
 
     inputs = Input(shape=input_shape)
-    x = resnet_layer(inputs=inputs)
 
     conv_so_far = 0
     use_shift = False
+
+    conv_so_far += 1
+    use_shift = (depth - conv_so_far <= shift_depth)
+    x = resnet_layer(inputs=inputs, use_shift=use_shift)
+
     # Instantiate the stack of residual units
     for stack in range(3):
         for res_block in range(num_res_blocks):
             strides = 1
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 strides = 2  # downsample
-
+            
+            conv_so_far += 1
+            use_shift = (depth - conv_so_far <= shift_depth)
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
                              strides=strides,
                              use_shift=use_shift)
+
             conv_so_far += 1
             use_shift = (depth - conv_so_far <= shift_depth)
-
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
                              activation=None,
                              use_shift=use_shift)
-            conv_so_far += 1
-            use_shift = (depth - conv_so_far <= shift_depth)
 
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 # linear projection residual shortcut connection to match
                 # changed dims
+                conv_so_far += 1
+                use_shift = (depth - conv_so_far <= shift_depth)
                 x = resnet_layer(inputs=x,
                                  num_filters=num_filters,
                                  kernel_size=1,
@@ -361,8 +367,6 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
                                  activation=None,
                                  batch_normalization=False,
                                  use_shift=use_shift)
-                conv_so_far += 1
-                use_shift = (depth - conv_so_far <= shift_depth)
 
             x = keras.layers.add([x, y])
             x = Activation('relu')(x)
