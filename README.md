@@ -17,6 +17,15 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 
 #### Converting Some Layers
 Converting only the last `N_shift` convolution layers (as well as the last fully connected layer) to shift layers.
+I still need to create the table for this. There have been some undocumented tests that got more than 90% accuracy (close to original accuracy) when converting some of the layers to shift layers.
+
+### Codewalk Through
+* `keras`: directory containing implementation, tests, and saved models using Keras
+    * `shift_layer.py`: definition of `DenseShift` class that inherits from Keras' `Layer` class and modifies it to implement fully connected (a.k.a Dense) layer as multiplications with integer powers of 2 (mathematically equialvent to bitwaise shift) and  integer powers of -1 (mathematically equivalent to sign change or sign keep). 
+    * `convolutional_shift.py`: definition of `Conv2DShift` class that inherits from Keras` `Conv2D` layer to implement convolution as multiplications with integer powers of 2 (mathematically equialvent to bitwaise shift) and  integer powers of -1 (mathematically equivalent to sign change or sign keep).
+    * `mnist_deepshift.py`: example script to classify MNIST dataset using a small fully connected model.
+    * `cifar10_resshift.py`: modify different depth versions of ResNet50 to use shift convolutions instead of multiplication convolutions.
+    * `selected_models`: directory containing saved Keras model files and training results
 
 ### TODOs
 Currently, both trainining and inference are actually done by multiplying by a power of 2 and by a power of -1.
