@@ -13,6 +13,7 @@ from tensorflow.python.keras.regularizers import L1L2
 
 from tensorflow.python.framework import tensor_shape
 import time
+
 class IntegerConstraint (Constraint):
     def __init__(self, low=None, high=None, **kwargs):
         super(IntegerConstraint, self).__init__(**kwargs)
