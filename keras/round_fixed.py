@@ -21,15 +21,16 @@ class RoundToFixed(Layer):
 
     def call(self, x):
         x_numpy = x.numpy()
-        x_rounded = np.zeros((x_numpy.size))
+        x_rounded = np.zeros(x_numpy.shape)
         
         # TODO: handle arbitrary dimensions
         for i in range(x_numpy.shape[0]):
             for j in range(x_numpy.shape[1]):
                 val = x_numpy[i][j]
-                x_rounded[i*x_numpy.shape[0] + j] = FXnum(np.asscalar(val))
+                x_rounded[i][j] = FXnum(np.asscalar(val))
 
-        x_rounded = x_rounded.reshape(x.shape)
+        x_rounded = tf.convert_to_tensor(x_rounded, dtype=tf.float32)
+        return x_rounded
 
 
     def compute_output_shape(self, input_shape):
