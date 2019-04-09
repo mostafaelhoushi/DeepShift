@@ -9,6 +9,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from shift_layer import *
+from round_fixed import *
 import sys
 ######necessary packages to use spfpm, the fixed point package
 sys.path.insert(0, '../spfpm/')
@@ -41,9 +42,9 @@ y_train = tf.keras.utils.to_categorical(y_train, num_classes)
 y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
-#model.add(RoundToFixed(name='round2fix_1'))
-model.add(Dense(512, input_shape=(784,), name='dense_1'))
-model.add(Activation('relu', name='relu1'))
+model.add(DenseShift(512, input_shape=(784,)))
+#model.add(RoundToFixed())
+model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(512, name='dense_shift_2'))
 model.add(Activation('relu', name='relu2'))
