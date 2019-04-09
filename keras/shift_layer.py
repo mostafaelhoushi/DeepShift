@@ -17,9 +17,9 @@ class IntegerConstraint (Constraint):
     def __call__(self, w):
         res = K.round(w)
         if self.low is not None:
-            res *= K.cast(K.greater_equal(res, self.low), K.floatx())
+            res = res*K.cast(K.greater_equal(res, self.low), K.floatx()) + self.low*K.cast(K.less_equal(res, self.low), K.floatx())
         if self.high is not None:
-            res *= K.cast(K.less_equal(res, self.high), K.floatx())
+            res = res*K.cast(K.less_equal(res, self.high), K.floatx()) + self.high*K.cast(K.greater_equal(res, self.high), K.floatx())
 
         return res
 
