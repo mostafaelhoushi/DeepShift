@@ -8,12 +8,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.datasets import mnist
-from tensorflow.python.keras.models import Sequential
-from tensorflow.python.keras.layers import Dense, Dropout, Activation, Lambda
-
 from shift_layer import *
-from round_fixed import *
 import sys
 ######necessary packages to use spfpm, the fixed point package
 sys.path.insert(0, '../spfpm/')
