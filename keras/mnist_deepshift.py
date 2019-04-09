@@ -23,7 +23,6 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-
 tf.enable_eager_execution()
 
 batch_size = 128
@@ -45,7 +44,6 @@ print(x_test.shape[0], 'test samples')
 # convert class vectors to binary class matrices
 y_train = tf.keras.utils.to_categorical(y_train, num_classes)
 y_test = tf.keras.utils.to_categorical(y_test, num_classes)
-
 
 model = Sequential()
 #model.add(RoundToFixed(name='round2fix_1'))
