@@ -13,6 +13,7 @@ from keras.layers import Dense, Dropout, Activation
 from keras.optimizers import *
 
 from shift_layer import *
+from round_fixed import *
 import sys
 ######necessary packages to use spfpm, the fixed point package
 sys.path.insert(0, '../spfpm/')
@@ -44,6 +45,7 @@ y_test = keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
 model.add(DenseShift(512, input_shape=(784,)))
+#model.add(RoundToFixed())
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(DenseShift(512)) 
