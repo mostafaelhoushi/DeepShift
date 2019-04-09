@@ -20,6 +20,9 @@ class RoundToFixed(Layer):
         super(RoundToFixed, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, x):
+        # using the statement below made the train hang for some reason
+        # return K.map_fn(lambda i : K.map_fn(lambda j : K.variable(float(FXnum(np.asscalar(j.numpy())))), i), x)
+
         x_numpy = x.numpy()
         x_rounded = np.zeros(x_numpy.shape)
         
