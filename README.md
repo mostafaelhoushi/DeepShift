@@ -61,7 +61,7 @@ virtualenv venv
 ```
 source venv/bin/activate
 ```
-5. Install required packages and build the spfpm package for fixed point
+5. Install required packages
 ```
 pip install -r requirements.txt
 cd spfpm
