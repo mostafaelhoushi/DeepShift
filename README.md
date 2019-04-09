@@ -40,19 +40,27 @@ So we need to:
 ```
 git clone http://rnd-gitlab-ca.huawei.com/Scope/Incubator/ -b DeepShift DeepShift
 ```
-2. Install required packages:
+2. Create virtual environment: 
 ```
-pip install keras tensorflow tensorflow-gpu numpy
+virtualenv venv
 ```
-3. cd into `keras` directroy:
+3. (Needs to be done every time you run code) Source the environment:
+```
+source venv/bin/activate
+```
+4. Install required packages
+```
+pip install -r requirements.txt
+```
+5. cd into `keras` directroy:
 ```
 cd keras
 ```
-4. Run the MNIST test:
+6. Run the MNIST test:
 ```
 python mnist_deepshift.py
 ```
-5. Run the ResNet test. You can check for various options to pass:
+7. Run the ResNet test. You can check for various options to pass:
 ```
 python cifar10_resshift.py --help
 ```
