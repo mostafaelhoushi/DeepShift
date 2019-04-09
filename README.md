@@ -47,29 +47,33 @@ So we need to:
 ### Running the Code
 1. Clone the repo:
 ```
-git clone http://rnd-gitlab-ca.huawei.com/Scope/Incubator/ -b DeepShift DeepShift
+git clone http://rnd-gitlab-ca-y.huawei.com/mindspore/deepshift/ DeepShift
 ```
-2. Create virtual environment: 
+2. Change directory
+```
+cd DeepShift
+```
+3. Create virtual environment: 
 ```
 virtualenv venv
 ```
-3. (Needs to be done every time you run code) Source the environment:
+4. (Needs to be done every time you run code) Source the environment:
 ```
 source venv/bin/activate
 ```
-4. Install required packages
+5. Install required packages
 ```
 pip install -r requirements.txt
 ```
-5. cd into `keras` directroy:
+6. cd into `keras` directroy:
 ```
 cd keras
 ```
-6. Run the MNIST test:
+7. Run the MNIST test:
 ```
 python mnist_deepshift.py
 ```
-7. Run the ResNet test. You can check for various options to pass:
+8. Run the ResNet test. You can check for various options to pass:
 ```
 python cifar10_resshift.py --help
 ```
