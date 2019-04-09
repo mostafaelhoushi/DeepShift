@@ -1,18 +1,12 @@
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.layers import Layer
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Layer
 import tensorflow as tf
 import numpy as np
-import math
-import sys
-sys.path.insert(0, '../spfpm/')
-from FixedPoint import FXfamily, FXnum
-import tensorflow.python.keras.constraints
-from tensorflow.python.keras.initializers import RandomUniform
-from tensorflow.python.keras.constraints import Constraint
-from tensorflow.python.keras.regularizers import L1L2
 
-from tensorflow.python.framework import tensor_shape
-import time
+import tensorflow.keras.constraints
+from tensorflow.keras.initializers import RandomUniform
+from tensorflow.keras.constraints import Constraint
+from tensorflow.keras.regularizers import L1L2
 
 class IntegerConstraint (Constraint):
     def __init__(self, low=None, high=None, **kwargs):
@@ -72,22 +66,22 @@ class DenseShift(Layer):
 
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
-        self.shift = self.add_weight(name='shift',
-                                      shape=(input_shape[1], self.output_dim),
+        self.shift = self.add_variable(name='shift', 
+                                      shape=[input_shape[1], self.output_dim],
                                       constraint=IntegerConstraint(),
                                       #dtype=tf.int32,
                                       initializer=RoundedRandomUniform(),
                                       trainable=True)
-        self.sign = self.add_weight(name='sign',
-                                      shape=(input_shape[1], self.output_dim),
+        self.sign = self.add_variable(name='sign', 
+                                      shape=[input_shape[1], self.output_dim],
                                       constraint=IntegerConstraint(0,1),
                                       #dtype=tf.int32,
                                       initializer=RoundedRandomUniform(0,1),
-                                      trainable=True)
-        self.bias = self.add_weight(name='bias',
-                                      shape=(self.output_dim,),
-                                      initializer='uniform',
-                                      trainable=True)
+                                      trainable=True)                        
+        self.bias = self.add_variable(name='bias', 
+                                    shape=[1, self.output_dim],
+                                    initializer='uniform',
+                                    trainable=True)
 
         self.twos = K.ones(shape=self.shift.shape)*2
         self.minusones = K.ones(shape=self.sign.shape)*-1
