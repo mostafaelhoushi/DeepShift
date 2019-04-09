@@ -61,9 +61,11 @@ virtualenv venv
 ```
 source venv/bin/activate
 ```
-5. Install required packages
+5. Install required packages and build the spfpm package for fixed point
 ```
 pip install -r requirements.txt
+cd spfpm
+make
 ```
 6. cd into `keras` directroy:
 ```

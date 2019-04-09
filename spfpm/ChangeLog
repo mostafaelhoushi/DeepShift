@@ -1,0 +1,132 @@
+ChangeLog for Simple Python Fixed-Point Module
+
+12May18	- Added signed/twos-complement option to FXnum.toBinaryString() method
+
+03May18	- Added 'precision' option to FXnum.toDecimalString() method
+	Improved estimation of number of digits in decimal representation
+
+28Apr18	- Replaced asin() formula for pi with Bailey-Borwein-Plouffe series
+
+16Apr18	- *** spfpm-1.4 released
+
+13Apr18	- Added method for printing FXnum as binary/octal/hexadecimal string
+
+11Apr18	- Added shortcut method to FXfamily for creating FXnum instances
+
+24Feb18	- *** spfpm-1.3 released
+
+24Jun17	- Improved convergence of asin() series.
+	Replaced atan() computation of pi with asin().
+
+29May17	- Neatened asin() and acos() methods, avoiding use of atan().
+
+28May17	- Improved efficiency of computation of log(2)
+	Converted README.txt into markdown
+
+13May17	- Added optimized FXnum constructor to improve speed of arithmetic
+	Added command-line switches for demonstration script
+	Added plot of Pi accuracy to demonstration script
+
+06May17	- *** spfpm-1.2 released
+
+05May17	- removed need to have same FXfamily object when combining FXnums
+	- added '__slots__' specifier to FXnum fields
+
+15Jul14	- *** spfpm-1.1 released
+
+15Jul14	- added left/right shift operators
+	improved initialization of FXnum objects from output of repr()
+
+14Jul14	- replaced various getter methods in FXfamily with properties
+	added improved expressions for computing exp(1) and log(2)
+	updated graph-based demos to use Matplotlib in place of Gnuplot
+
+19May09	- *** spfpm-1.0.1 released
+
+20Feb09	- patched FXnum constructor to check for overflows
+
+31Jan09	- *** spfpm-1.0 released
+
+31Jan09	- improved accuracy of pi,log(2) etc used in trig,exp functions
+
+06Dec08	- ported to Python-3.0
+
+11Apr08	- *** spfpm-0.6 released
+
+09Apr08	- added validator in FXfamily to allow limited range of integer-part
+
+07Oct07	- added basic FLOPS calculator to demo.py
+
+27May07	- *** spfpm-0.5 released
+
+26May07	- minor adjustments to ensure test-cases run under Python-2.2
+	added unit-test for repr()
+
+21May07	- neatened module importing in unit-test routines
+
+23Apr07	- removed use of 'isinstance' from FXfamily & (almost all of) FXnum
+
+11Feb07	- added improved asin()/acos() methods based on 1-cos2t transformations
+
+04Feb07	- removed (deprecated) FPnum wrappers
+
+03Feb07	- *** spfpm-0.4 released
+
+03Feb07	- patched rounding on cast to int/long to match behaviour of float-casts
+	added unit-test for sqrt() method
+	expanded set of exception classes, including domain-error etc
+	added unit-test for asin() & acos() methods
+
+02Feb07	- added demo/test/clean Makefile targets
+
+01Feb07	- added setup.py distutils-script
+
+31Jan07	- added basic asin() & acos() methods
+
+30Jan07	- replaced _rawsincos() method with dual-mode _rawQsine() method
+	added sin() & cos() methods
+
+29Jan07	- patched spurious family-conversion in __neg__() operator
+
+27Jan07	- extended discusions + examples in documentation
+	added doctest.testmod() test for documentation
+	added __abs__, __pos__, __hash__() methods
+	changed default distribution-format to .zip in place of .tar.gz
+
+22Jan07	- neatened internal usage of truncating division
+	wired-together __div__ & __truediv__ operators
+
+21Jan07	- *** spfpm-0.3 released
+
+21Jan06	- added backwards-compatibility SetFraction method to FPnum wrapper
+	renamed arctan() method to atan() to agree with math-module convention
+
+20Jan06	- added unit-test for resolution-conversions
+	added arctan & _rawarctan() methods
+	adjusted sincos() method to reduce angles moduli Pi rather than halving
+	added GetPi() method to FXfamily
+	adjusted FXfamily to use greater bit-count when finding cached constants
+
+19Jan06	- changed 'FPnum' to 'FXnum' to avoid abbreviation-clash with 'Floating Point'
+	added FPnum backward-compatibility wrapper
+
+18Jan06	- added unit-test for __str__ method
+
+17Jan06	- converted resolution information to shareable FPfamily object
+
+16Jan06	- added test for __nonzero__ method & patched reference to 'other'
+	removed __iadd__, __isub__ methods to make immutable object
+	added unit-test for immutability
+
+15Jan07	- *** spfpm-0.2 released
+
+13Jan07	- added basic Makefile for building release packages
+	added unit-tests for pow() and sincos() methods
+
+08Jan07	- added logarithm methods
+
+03Jan07	- added basic unit-testing class for arithmetic operations
+
+02Jan07	- converted RCS repository into SVN
+
+26Dec06	- *** prototype of spfpm-0.1 released

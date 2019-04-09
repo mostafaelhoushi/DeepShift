@@ -13,7 +13,11 @@ from keras.layers import Dense, Dropout, Activation
 from keras.optimizers import *
 
 from shift_layer import *
-
+import sys
+######necessary packages to use spfpm, the fixed point package
+sys.path.insert(0, '../spfpm/')
+from FixedPoint import FXfamily, FXnum
+######
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -62,6 +66,9 @@ history = model.fit(x_train, y_train,
 score = model.evaluate(x_test, y_test, verbose=0)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])
+#sample code on using fixed point package
+x = FXnum(22)
+print("========",x,"===========")
 
 for layer in model.layers:
     print("Layer: " + layer.name)
