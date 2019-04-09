@@ -6,11 +6,11 @@ Gets to 98.40% test accuracy after 20 epochs
 
 from __future__ import print_function
 
-import keras
-from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation
-from keras.optimizers import *
+import tensorflow as tf
+
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, Activation
 
 from shift_layer import *
 from round_fixed import *
@@ -22,6 +22,8 @@ from FixedPoint import FXfamily, FXnum
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+tf.enable_eager_execution()
 
 batch_size = 128
 num_classes = 10
@@ -40,24 +42,24 @@ print(x_train.shape[0], 'train samples')
 print(x_test.shape[0], 'test samples')
 
 # convert class vectors to binary class matrices
-y_train = keras.utils.to_categorical(y_train, num_classes)
-y_test = keras.utils.to_categorical(y_test, num_classes)
+y_train = tf.keras.utils.to_categorical(y_train, num_classes)
+y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
 model = Sequential()
-model.add(DenseShift(512, input_shape=(784,)))
-#model.add(RoundToFixed())
+model.add(DenseShift(512, input_shape=(784,), name='dense_shift_1'))
+model.add(RoundToFixed())
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(DenseShift(512)) 
+model.add(DenseShift(512, name='dense_shift_2')) 
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(DenseShift(num_classes)) 
+model.add(DenseShift(num_classes, name='dense_shift_3')) 
 model.add(Activation('softmax'))
 
 model.summary()
 
 model.compile(loss='categorical_crossentropy',
-              optimizer=RMSprop(),
+              optimizer=tf.train.RMSPropOptimizer(learning_rate=0.01),
               metrics=['accuracy'])
 
 history = model.fit(x_train, y_train,

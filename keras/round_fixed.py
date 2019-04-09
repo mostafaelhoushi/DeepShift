@@ -4,8 +4,11 @@ sys.path.insert(0, '../spfpm/')
 from FixedPoint import FXfamily, FXnum
 ######
 
-from keras import backend as K
-from keras.layers import Layer
+import tensorflow as tf
+import numpy as np
+
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Layer
 
 class RoundToFixed(Layer):
 
@@ -17,7 +20,17 @@ class RoundToFixed(Layer):
         super(RoundToFixed, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, x):
-        return FXnum(x)
+        x_numpy = x.numpy()
+        x_rounded = np.zeros((x_numpy.size))
+        
+        # TODO: handle arbitrary dimensions
+        for i in range(x_numpy.shape[0]):
+            for j in range(x_numpy.shape[1]):
+                val = x_numpy[i][j]
+                x_rounded[i*x_numpy.shape[0] + j] = FXnum(np.asscalar(val))
+
+        x_rounded = x_rounded.reshape(x.shape)
+
 
     def compute_output_shape(self, input_shape):
         # this is an elementwise op so output shape is same as input shape
