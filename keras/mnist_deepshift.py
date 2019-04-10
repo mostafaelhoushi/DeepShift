@@ -10,7 +10,7 @@ import tensorflow as tf
 
 from tensorflow.keras.datasets import mnist
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Activation
+from tensorflow.keras.layers import Dense, Dropout, Activation, Lambda
 
 from shift_layer import *
 from round_fixed import *
@@ -48,6 +48,7 @@ y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 model = Sequential()
 model.add(DenseShift(512, input_shape=(784,), name='dense_shift_1'))
 model.add(RoundToFixed())
+# model.add(Lambda(lambda x: (lambda j: j)))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(DenseShift(512, name='dense_shift_2')) 
