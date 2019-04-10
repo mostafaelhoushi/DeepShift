@@ -17,7 +17,14 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 
 #### Converting Some Layers
 Converting only the last `N_shift` convolution layers (as well as the last fully connected layer) to shift layers.
-I still need to create the table for this. There have been some undocumented tests that got more than 90% accuracy (close to original accuracy) when converting some of the layers to shift layers.
+The table below shows the validation accuracy results for ResNet50 on CIFAR10:
+| #Conv2D Layers | #Conv2DShift Layers | Accuracy |
+| 51 | 0 | TBD |
+| 39 | 12 | 92.14% |
+| 29 | 22 | 91.65% |
+| 19 | 32 | 88.83% |
+| 9 | 42 | 88.12% |
+| 0 | 51 | 86.23% |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
