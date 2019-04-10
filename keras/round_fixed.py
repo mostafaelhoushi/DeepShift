@@ -22,10 +22,11 @@ class RoundToFixed(Layer):
     def call(self, x):
         # using the statement below made the train hang for some reason
         # return K.map_fn(lambda i : K.map_fn(lambda j : K.variable(float(FXnum(np.asscalar(j.numpy())))), i), x)
-
+        #print("x: " + str(x))
         x_numpy = x.numpy()
         x_rounded = np.zeros(x_numpy.shape)
         
+        fam = FXfamily(64)
         # TODO: handle arbitrary dimensions
         for i in range(x_numpy.shape[0]):
             for j in range(x_numpy.shape[1]):
@@ -33,6 +34,7 @@ class RoundToFixed(Layer):
                 x_rounded[i][j] = float(FXnum(np.asscalar(val)))
 
         x_rounded = tf.convert_to_tensor(x_rounded, dtype=tf.float32)
+        #print("x_rounded: " + str(x_rounded))
         return x_rounded
 
 
