@@ -23,7 +23,6 @@ class IntegerConstraint (Constraint):
     def __call__(self, w):
         #print("w: " + str(w.numpy()))
         res = K.round(w)
-        #print("res11: " + str(w.numpy()))
 
         if self.low is not None and self.high is not None:
             res = K.clip(res, self.low, self.high)
@@ -31,8 +30,6 @@ class IntegerConstraint (Constraint):
             res = K.clip(res, self.low, res)
         elif self.high is not None and self.low is None:
             res = K.clip(res, res, self.high)
-
-        #print("res22: " + str(res.numpy()))
 
         return res
 
