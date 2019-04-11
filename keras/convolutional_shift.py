@@ -158,8 +158,6 @@ class Conv2DShift(ConvShift):
         else:
             return self.inference_fun(x)
 
-
-
 # Aliases
 
 Convolution2DShift = Conv2DShift
