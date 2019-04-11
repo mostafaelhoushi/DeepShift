@@ -21,7 +21,7 @@ The table below shows the validation accuracy results for ResNet50 on CIFAR10:
 
 | # Conv2D Layers | # Conv2DShift Layers | Accuracy |
 | --------------- | -------------------- | -------- |
-| 51 | 0 | TBD |
+| 51 | 0 | 91.93% |
 | 39 | 12 | 92.14% |
 | 29 | 22 | 91.65% |
 | 19 | 32 | 88.83% |
