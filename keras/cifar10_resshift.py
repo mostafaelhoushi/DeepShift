@@ -157,7 +157,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 
 	# callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
 	callbacks = [checkpoint, csv_logger]
-
+    
 	# Run training, with or without data augmentation.
 	if not data_augmentation:
 		print('Not using data augmentation.')
