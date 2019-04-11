@@ -158,5 +158,79 @@ class Conv2DShift(ConvShift):
         else:
             return self.inference_fun(x)
 
-# Aliases
-Convolution2DShift = Conv2DShift
+        if self.rank == 1:
+            outputs = K.conv1d(
+                inputs,
+                W,
+                strides=self.strides[0],
+                padding=self.padding,
+                data_format=self.data_format,
+                dilation_rate=self.dilation_rate[0])
+        if self.rank == 2:
+            outputs = K.conv2d(
+                inputs,
+                W,
+                strides=self.strides,
+                padding=self.padding,
+                data_format=self.data_format,
+                dilation_rate=self.dilation_rate)
+        if self.rank == 3:
+            outputs = K.conv3d(
+                inputs,
+                W,
+                strides=self.strides,
+                padding=self.padding,
+                data_format=self.data_format,
+                dilation_rate=self.dilation_rate)
+
+        if self.use_bias:
+            outputs = K.bias_add(
+                outputs,
+                self.bias,
+                data_format=self.data_format)
+
+        if self.activation is not None:
+            return self.activation(outputs)
+        return outputs
+
+class Conv2DShift(_ConvShift):
+    @interfaces.legacy_conv2d_support
+    def __init__(self, filters,
+                 kernel_size,
+                 strides=(1, 1),
+                 padding='valid',
+                 data_format=None,
+                 dilation_rate=(1, 1),
+                 activation=None,
+                 use_bias=True,
+                 kernel_initializer=RoundedRandomUniform(),
+                 bias_initializer='zeros',
+                 kernel_regularizer=None,
+                 bias_regularizer=None,
+                 activity_regularizer=None,
+                 kernel_constraint=IntegerConstraint(),
+                 bias_constraint=None,
+                 **kwargs):
+        super(Conv2DShift, self).__init__(
+            rank=2,
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding=padding,
+            data_format=data_format,
+            dilation_rate=dilation_rate,
+            activation=activation,
+            use_bias=use_bias,
+            kernel_initializer=kernel_initializer,
+            bias_initializer=bias_initializer,
+            kernel_regularizer=kernel_regularizer,
+            bias_regularizer=bias_regularizer,
+            activity_regularizer=activity_regularizer,
+            kernel_constraint=kernel_constraint,
+            bias_constraint=bias_constraint,
+            **kwargs)
+
+    def get_config(self):
+        config = super(Conv2DShift, self).get_config()
+        config.pop('rank')
+        return config
