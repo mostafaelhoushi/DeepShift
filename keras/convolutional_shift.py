@@ -46,55 +46,11 @@ class ConvShift(Conv):
   def build(self, input_shape):
     # TODO: minimize redundancy by invoking build of Conv
     # and do minimal additions here
-    input_shape = tensor_shape.TensorShape(input_shape)
-    if self.data_format == 'channels_first':
-      channel_axis = 1
-    else:
-      channel_axis = -1
-    if input_shape.dims[channel_axis].value is None:
-      raise ValueError('The channel dimension of the inputs '
-                       'should be defined. Found `None`.')
-    input_dim = int(input_shape[channel_axis])
-    kernel_shape = self.kernel_size + (input_dim, self.filters)
+    super(ConvShift, self).build(input_shape)
 
-    #TODO: rename "kernel" to "shift"
-    self.kernel = self.add_weight(
-        name='kernel',
-        shape=kernel_shape,
-        initializer=self.kernel_initializer,
-        regularizer=self.kernel_regularizer,
-        constraint=self.kernel_constraint,
-        trainable=True,
-        dtype=self.dtype)
-    if self.use_bias:
-      self.bias = self.add_weight(
-          name='bias',
-          shape=(self.filters,),
-          initializer=self.bias_initializer,
-          regularizer=self.bias_regularizer,
-          constraint=self.bias_constraint,
-          trainable=True,
-          dtype=self.dtype)
-    else:
-      self.bias = None
-    self.input_spec = InputSpec(ndim=self.rank + 2,
-                                axes={channel_axis: input_dim})
-    if self.padding == 'causal':
-      op_padding = 'valid'
-    else:
-      op_padding = self.padding
-    if not isinstance(op_padding, (list, tuple)):
-      op_padding = op_padding.upper()
-    self._convolution_op = nn_ops.Convolution(
-        input_shape,
-        filter_shape=self.kernel.shape,
-        dilation_rate=self.dilation_rate,
-        strides=self.strides,
-        padding=op_padding,
-        data_format=conv_utils.convert_data_format(self.data_format,
-                                                   self.rank + 2))
-    self.built = True
+    kernel_shape = self.kernel.shape
 
+    #TODO: rename "self.kernel" to "self.shift" ?
     self.sign = self.add_weight(shape=kernel_shape,
                                     initializer=RoundedRandomUniform(0,1),
                                     name='sign',
