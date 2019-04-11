@@ -3,7 +3,7 @@ from tensorflow.python.keras.layers.convolutional import *
 
 from shift_layer import *
 
-class ConvShift(tf.keras.layers.Layer):
+class ConvShift(Conv):
   def __init__(self, rank,
                filters,
                kernel_size,
@@ -23,33 +23,25 @@ class ConvShift(tf.keras.layers.Layer):
                trainable=True,
                name=None,
                **kwargs):
-    super(ConvShift, self).__init__(
-        trainable=trainable,
-        name=name,
-        activity_regularizer=regularizers.get(activity_regularizer),
-        **kwargs)
-    self.rank = rank
-    self.filters = filters
-    self.kernel_size = conv_utils.normalize_tuple(
-        kernel_size, rank, 'kernel_size')
-    self.strides = conv_utils.normalize_tuple(strides, rank, 'strides')
-    self.padding = conv_utils.normalize_padding(padding)
-    if (self.padding == 'causal' and not isinstance(self,
-                                                    (Conv1D, SeparableConv1D))):
-      raise ValueError('Causal padding is only supported for `Conv1D`'
-                       'and ``SeparableConv1D`.')
-    self.data_format = conv_utils.normalize_data_format(data_format)
-    self.dilation_rate = conv_utils.normalize_tuple(
-        dilation_rate, rank, 'dilation_rate')
-    self.activation = activations.get(activation)
-    self.use_bias = use_bias
-    self.kernel_initializer = initializers.get(kernel_initializer)
-    self.bias_initializer = initializers.get(bias_initializer)
-    self.kernel_regularizer = regularizers.get(kernel_regularizer)
-    self.bias_regularizer = regularizers.get(bias_regularizer)
-    self.kernel_constraint = constraints.get(kernel_constraint)
-    self.bias_constraint = constraints.get(bias_constraint)
-    self.input_spec = InputSpec(ndim=self.rank + 2)
+    super(ConvShift, self).__init__(rank=rank,
+                                    filters=filters,
+                                    kernel_size=kernel_size,
+                                    strides=strides,
+                                    padding=padding,
+                                    data_format=data_format,
+                                    dilation_rate=dilation_rate,
+                                    activation=activation,
+                                    use_bias=use_bias,
+                                    kernel_initializer=kernel_initializer,
+                                    bias_initializer=bias_initializer,
+                                    kernel_regularizer=kernel_regularizer,
+                                    bias_regularizer=bias_regularizer,
+                                    activity_regularizer=activity_regularizer,
+                                    kernel_constraint=kernel_constraint,
+                                    bias_constraint=bias_constraint,
+                                    trainable=trainable,
+                                    name=name,
+                                    **kwargs)
 
   def build(self, input_shape):
     # TODO: minimize redundancy by invoking build of Conv
