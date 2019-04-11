@@ -282,7 +282,7 @@ def resnet_layer(inputs,
     # Returns
         x (tensor): tensor as input to the next layer
     """
-    
+
     if use_shift == False:
         conv = Conv2D(num_filters,
                     kernel_size=kernel_size,
