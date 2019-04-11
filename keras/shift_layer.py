@@ -100,7 +100,7 @@ class DenseShift(Layer):
         super(DenseShift, self).build(input_shape)
 
     def inference_fun(self, x):
-        start_time = time.time()
+
         x_numpy = x.numpy()
         shift_numpy = self.shift.numpy()
         sign_numpy = self.sign.numpy()
@@ -121,7 +121,9 @@ class DenseShift(Layer):
                             val_fp = val_fp << int(abs(sft))
                         else:
                             val_fp = val_fp >> int(abs(sft))
-                        x_result[i][j] += float(val_fp) * math.pow(-1, s)
+                        if s == 1:
+                            val_fp = -val_fp
+                        x_result[i][j] += float(val_fp)
 
                     #for k+1
                     if (k+1 < x_numpy.shape[1]):
@@ -135,7 +137,9 @@ class DenseShift(Layer):
                                 val_fp = val_fp << int(abs(sft))
                             else:
                                 val_fp = val_fp >> int(abs(sft))
-                            x_result[i][j] += float(val_fp) * math.pow(-1, s)
+                            if s == 1:
+                                val_fp = -val_fp
+                            x_result[i][j] += float(val_fp)
 
                     #for k+2
                     if (k+2 < x_numpy.shape[1]):
@@ -149,12 +153,15 @@ class DenseShift(Layer):
                                 val_fp = val_fp << int(abs(sft))
                             else:
                                 val_fp = val_fp >> int(abs(sft))
-                            x_result[i][j] += float(val_fp) * math.pow(-1, s)
+                            if s == 1:
+                                val_fp = -val_fp
+                            x_result[i][j] += float(val_fp)
+
 
         x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
 
         x_result += self.bias
-        print ("elapsed time: ",time.time() - start_time)
+
         return x_result
 
     def call(self, x):
