@@ -159,5 +159,4 @@ class Conv2DShift(ConvShift):
             return self.inference_fun(x)
 
 # Aliases
-
 Convolution2DShift = Conv2DShift
