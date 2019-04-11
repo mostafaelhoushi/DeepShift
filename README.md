@@ -22,11 +22,11 @@ The table below shows the validation accuracy results for ResNet50 on CIFAR10:
 | # Conv2D Layers | # Conv2DShift Layers | Accuracy |
 | --------------- | -------------------- | -------- |
 | 51 | 0 | 91.93% |
-| 39 | 12 | 92.14% |
-| 29 | 22 | 91.65% |
-| 19 | 32 | 88.83% |
-| 9 | 42 | 88.12% |
-| 0 | 51 | 86.23% |
+| 39 | 12 | <del>92.14%<del> |
+| 29 | 22 | <del>91.65%<del> |
+| 19 | 32 | <del>88.83%<del> |
+| 9 | 42 | <del>88.12%<del> |
+| 0 | 51 | <del>86.23%<del> |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
