@@ -150,7 +150,7 @@ class Conv2DShift(ConvShift):
 
     def inference_fun(self, x):
         # TODO: implement bitwise
-        return None
+        return super(Conv2DShift, self).call(x)
 
     def call(self, inputs):
         if K.in_train_phase(True, False):
