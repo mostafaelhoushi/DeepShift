@@ -112,7 +112,7 @@ class DenseShift(Layer):
                     s = sign_numpy[k][j]
                     sft = shift_numpy[k][j]
 
-                    x_result[i][j] += math.ldexp(val, sft) * math.pow(-1, s)
+                    x_result[i][j] += math.ldexp(val, inst(sft)) * math.pow(-1, s)
 
         x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
 
@@ -121,43 +121,12 @@ class DenseShift(Layer):
         return x_result
 
     def call(self, x):
-        #return self.inference_fun(x)
-
-        x_numpy = x.numpy()
-        shift_numpy = self.shift.numpy()
-        sign_numpy = self.sign.numpy()
-
-        x_result = np.zeros((x_numpy.shape[0], self.output_dim))
-
-
-        # TODO: handle arbitrary dimensions
-        for i in range(x_numpy.shape[0]):
-            for j in range(self.output_dim):
-                for k in range(x_numpy.shape[1]):
-                    val = x_numpy[i][k]
-                    s = sign_numpy[k][j]
-                    sft = shift_numpy[k][j]
-
-                    print("val: " + str(val))
-                    print("sign: " + str(s))
-                    print("shift: " + str(sft))
-
-                    x_result[i][j] += math.ldexp(val, int(sft)) * math.pow(-1, s)
-
-
-        x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
-
-        x_result += self.bias
-
-        return x_result
-
-        '''
         if K.in_train_phase(True, False):
             W = K.pow(self.twos, self.shift) * K.pow(self.minusones, self.sign)
             return K.dot(x,W) + self.bias
         else:
             return self.inference_fun(x)
-        '''
+
 
 
     def compute_output_shape(self, input_shape):
