@@ -28,23 +28,26 @@ ResNet1001 v2|111|     - %|            95.08+-.14 %|  -
 """
 
 from __future__ import print_function
-import keras
-from keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from keras.layers import AveragePooling2D, Input, Flatten, DepthwiseConv2D
-from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler, CSVLogger
-from keras.callbacks import ReduceLROnPlateau
-from keras.preprocessing.image import ImageDataGenerator
-from keras.regularizers import l2
-from keras import backend as K
-from keras.models import Model
-from keras.datasets import cifar10
+import tensorflow as tf
+import tensorflow.keras
+from tensorflow.keras.layers import Dense, Conv2D, BatchNormalization, Activation
+from tensorflow.keras.layers import AveragePooling2D, Input, Flatten, DepthwiseConv2D
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, CSVLogger
+from tensorflow.keras.callbacks import ReduceLROnPlateau
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras import backend as K
+from tensorflow.keras.models import Model
+from tensorflow.keras.datasets import cifar10
 import numpy as np
 import os
 import argparse
 
 from shift_layer import *
 from convolutional_shift import *
+
+tf.enable_eager_execution()
 
 # Script Arguments: n, version
 # n: Model parameter
@@ -106,8 +109,8 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 	print('y_train shape:', y_train.shape)
 
 	# Convert class vectors to binary class matrices.
-	y_train = keras.utils.to_categorical(y_train, num_classes)
-	y_test = keras.utils.to_categorical(y_test, num_classes)
+	y_train = tf.keras.utils.to_categorical(y_train, num_classes)
+	y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
 	if version == 2:
 		model = resnet_v2(input_shape=input_shape, depth=depth)
@@ -115,7 +118,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 		model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 
 	model.compile(loss=loss,
-				  optimizer=Adam(lr=lr_schedule(0)),
+				  optimizer=tf.train.AdamOptimizer(learning_rate=lr_schedule(0)),
 				  metrics=['accuracy'])
 	model.summary()
 	print(model_type)
@@ -139,16 +142,21 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 								 verbose=1,
 								 save_best_only=True)
 
+	# TODO: fix lr_reducer and lr_scheduler for eager mode
 	lr_scheduler = LearningRateScheduler(lr_schedule)
 
+	'''
+	# Not compatible with eager execution
 	lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
 								   cooldown=0,
 								   patience=5,
 								   min_lr=0.5e-6)
+	'''
 								   
 	csv_logger = CSVLogger(os.path.join(save_dir,model_name+"_train_log.csv"))
 
-	callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
+	# callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
+	callbacks = [checkpoint, csv_logger]
 
 	# Run training, with or without data augmentation.
 	if not data_augmentation:
@@ -263,7 +271,7 @@ def resnet_layer(inputs,
     # Returns
         x (tensor): tensor as input to the next layer
     """
-    
+
     if use_shift == False:
         conv = Conv2D(num_filters,
                     kernel_size=kernel_size,
@@ -276,7 +284,7 @@ def resnet_layer(inputs,
                         kernel_size=kernel_size,
                         strides=strides,
                         padding='same',
-                        kernel_regularizer=l2_powerof2(1e-4))
+                        kernel_regularizer=None) #l2_powerof2(1e-4)) #TODO: fix regularizer in eager mode
 
     x = inputs
     if conv_first:
@@ -368,7 +376,7 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
                                  batch_normalization=False,
                                  use_shift=use_shift)
 
-            x = keras.layers.add([x, y])
+            x = tf.keras.layers.add([x, y])
             x = Activation('relu')(x)
         num_filters *= 2
 
@@ -485,7 +493,7 @@ if __name__== "__main__":
 	parser.add_argument('--n', type=int, default=3, help='Model parameter (default: 3)')
 	parser.add_argument('--version', type=int, default=1, help='Model version (default: 1)')
 	parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
-	parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 10)')
+	parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
 
 	args = parser.parse_args()
 	
