@@ -220,7 +220,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 		model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
 							validation_data=(x_test, y_test),
 							epochs=epochs, verbose=1, workers=4, steps_per_epoch=x_train.shape[0]//batch_size,
-							callbacks=callbacks)
+							callbacks=callbacks, use_multiprocessing=True)
 
 	# Score trained model.
 	scores = model.evaluate(x_test, y_test, verbose=1)
