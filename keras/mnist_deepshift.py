@@ -78,4 +78,4 @@ print("========",x,"===========")
 for layer in model.layers:
     print("Layer: " + layer.name)
     for index, w in enumerate(layer.get_weights()):
-        np.savetxt(layer.name + str(index) + ".csv", w)
+        np.savetxt(layer.name + "_" + str(index) + ".csv", w, delimiter=",")
