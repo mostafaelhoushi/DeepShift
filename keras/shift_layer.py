@@ -3,7 +3,9 @@ from tensorflow.python.keras.layers import Layer
 import tensorflow as tf
 import numpy as np
 import math
-
+import sys
+sys.path.insert(0, '../spfpm/')
+from FixedPoint import FXfamily, FXnum
 import tensorflow.python.keras.constraints
 from tensorflow.python.keras.initializers import RandomUniform
 from tensorflow.python.keras.constraints import Constraint
@@ -111,8 +113,14 @@ class DenseShift(Layer):
                     val = x_numpy[i][k]
                     s = sign_numpy[k][j]
                     sft = shift_numpy[k][j]
+                    if (val != 0):
+                        val_fp = FXnum(val)
 
-                    x_result[i][j] += math.ldexp(val, inst(sft)) * math.pow(-1, s)
+                        if (sft > 0):
+                            val_fp = val_fp << int(abs(sft))
+                        else:
+                            val_fp = val_fp >> int(abs(sft))
+                        x_result[i][j] += float(val_fp) * math.pow(-1, s)
 
         x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
 
