@@ -124,15 +124,15 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 	print(model_type)
 
 	# Prepare model model saving directory.
-	save_dir = os.path.join(os.getcwd(), 'saved_models')
-	model_name = 'cifar10_%s_%s_model_shift_%s' % (model_type,loss,shift_depth)
-	model_checkpoint_name = model_name + '.{epoch:03d}.h5'
-	if not os.path.isdir(save_dir):
-		os.makedirs(save_dir)
-	model_checkpoint_path = os.path.join(save_dir, model_checkpoint_name)
+	model_name = 'cifar10_%s_model_shift_%s' % (model_type,shift_depth)
+	model_dir = os.path.join(os.path.join(os.getcwd(), 'saved_models'), model_name)
+	model_checkpoint_name = 'model' + '.{epoch:03d}.h5'
+	if not os.path.isdir(model_dir):
+		os.makedirs(model_dir, exist_ok=True)
+	model_checkpoint_path = os.path.join(model_dir, model_checkpoint_name)
 
-	model_summary_name = model_name + '.summary.txt'
-	model_summary_path = os.path.join(save_dir, model_summary_name)
+	model_summary_name = 'model_summary.txt'
+	model_summary_path = os.path.join(model_dir, model_summary_name)
 	with open(model_summary_path, 'w') as fp: 
 		model.summary(print_fn=lambda x: fp.write(x + '\n'))
 
@@ -153,7 +153,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 								   min_lr=0.5e-6)
 	'''
 								   
-	csv_logger = CSVLogger(os.path.join(save_dir,model_name+"_train_log.csv"))
+	csv_logger = CSVLogger(os.path.join(model_dir,"model"+ "_train_log.csv"))
 
 	# callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
 	callbacks = [checkpoint, csv_logger]
