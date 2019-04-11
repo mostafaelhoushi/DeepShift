@@ -48,19 +48,14 @@ y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
 
 model = Sequential()
-<<<<<<< HEAD
-model.add(RoundToFixed())
-model.add(DenseShift(512, input_shape=(784,), name='dense_shift_1'))
-=======
-#model.add(RoundToFixed())
-model.add(Dense(512, input_shape=(784,), name='dense_shift_1'))
->>>>>>> replace multiplication by shift
+#model.add(RoundToFixed(name='round2fix_1'))
+model.add(Dense(512, input_shape=(784,), name='dense_1'))
 model.add(Activation('relu', name='relu1'))
 model.add(Dropout(0.2))
 model.add(Dense(512, name='dense_shift_2'))
 model.add(Activation('relu', name='relu2'))
 model.add(Dropout(0.2))
-#model.add(RoundToFixed(name='round2fix'))
+#model.add(RoundToFixed(name='round2fix_2'))
 model.add(DenseShift(num_classes, name='dense_shift_3'))
 model.add(Activation('softmax', name='softmax'))
 
