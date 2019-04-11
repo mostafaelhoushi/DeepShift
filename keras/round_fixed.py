@@ -10,6 +10,7 @@ import numpy as np
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Layer
 
+
 class RoundToFixed(Layer):
 
     def __init__(self, **kwargs):

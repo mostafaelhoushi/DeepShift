@@ -1,12 +1,15 @@
-from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Layer
+from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.layers import Layer
 import tensorflow as tf
 import numpy as np
+import math
 
-import tensorflow.keras.constraints
-from tensorflow.keras.initializers import RandomUniform
-from tensorflow.keras.constraints import Constraint
-from tensorflow.keras.regularizers import L1L2
+import tensorflow.python.keras.constraints
+from tensorflow.python.keras.initializers import RandomUniform
+from tensorflow.python.keras.constraints import Constraint
+from tensorflow.python.keras.regularizers import L1L2
+
+from tensorflow.python.framework import tensor_shape
 
 class IntegerConstraint (Constraint):
     def __init__(self, low=None, high=None, **kwargs):
@@ -17,6 +20,7 @@ class IntegerConstraint (Constraint):
     def __call__(self, w):
         #print("w: " + str(w.numpy()))
         res = K.round(w)
+        #print("res11: " + str(w.numpy()))
 
         if self.low is not None and self.high is not None:
             res = K.clip(res, self.low, self.high)
@@ -25,7 +29,7 @@ class IntegerConstraint (Constraint):
         elif self.high is not None and self.low is None:
             res = K.clip(res, res, self.high)
 
-        #print("res: " + str(res.numpy()))
+        #print("res22: " + str(res.numpy()))
 
         return res
 
@@ -71,22 +75,22 @@ class DenseShift(Layer):
 
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
-        self.shift = self.add_variable(name='shift', 
-                                      shape=[input_shape[1], self.output_dim],
+        self.shift = self.add_weight(name='shift',
+                                      shape=(input_shape[1], self.output_dim),
                                       constraint=IntegerConstraint(),
                                       #dtype=tf.int32,
                                       initializer=RoundedRandomUniform(),
                                       trainable=True)
-        self.sign = self.add_variable(name='sign', 
-                                      shape=[input_shape[1], self.output_dim],
+        self.sign = self.add_weight(name='sign',
+                                      shape=(input_shape[1], self.output_dim),
                                       constraint=IntegerConstraint(0,1),
                                       #dtype=tf.int32,
                                       initializer=RoundedRandomUniform(0,1),
-                                      trainable=True)                        
-        self.bias = self.add_variable(name='bias', 
-                                    shape=[1, self.output_dim],
-                                    initializer='uniform',
-                                    trainable=True)
+                                      trainable=True)
+        self.bias = self.add_weight(name='bias',
+                                      shape=(self.output_dim,),
+                                      initializer='uniform',
+                                      trainable=True)
 
         self.twos = K.ones(shape=self.shift.shape)*2
         self.minusones = K.ones(shape=self.sign.shape)*-1
@@ -94,7 +98,6 @@ class DenseShift(Layer):
         super(DenseShift, self).build(input_shape)
 
     def inference_fun(self, x):
-
         x_numpy = x.numpy()
         shift_numpy = self.shift.numpy()
         sign_numpy = self.sign.numpy()
@@ -104,53 +107,12 @@ class DenseShift(Layer):
         # TODO: handle arbitrary dimensions
         for i in range(x_numpy.shape[0]):
             for j in range(self.output_dim):
-                for k in range(0, x_numpy.shape[1], 3):
+                for k in range(x_numpy.shape[1]):
                     val = x_numpy[i][k]
                     s = sign_numpy[k][j]
                     sft = shift_numpy[k][j]
-                    if (val != 0):
-                        val_fp = FXnum(val)
 
-                        if (sft > 0):
-                            val_fp = val_fp << int(abs(sft))
-                        else:
-                            val_fp = val_fp >> int(abs(sft))
-                        if s == 1:
-                            val_fp = -val_fp
-                        x_result[i][j] += float(val_fp)
-
-                    #for k+1
-                    if (k+1 < x_numpy.shape[1]):
-                        val = x_numpy[i][k+1]
-                        s = sign_numpy[k+1][j]
-                        sft = shift_numpy[k+1][j]
-                        if (val != 0):
-                            val_fp = FXnum(val)
-
-                            if (sft > 0):
-                                val_fp = val_fp << int(abs(sft))
-                            else:
-                                val_fp = val_fp >> int(abs(sft))
-                            if s == 1:
-                                val_fp = -val_fp
-                            x_result[i][j] += float(val_fp)
-
-                    #for k+2
-                    if (k+2 < x_numpy.shape[1]):
-                        val = x_numpy[i][k+2]
-                        s = sign_numpy[k+2][j]
-                        sft = shift_numpy[k+2][j]
-                        if (val != 0):
-                            val_fp = FXnum(val)
-
-                            if (sft > 0):
-                                val_fp = val_fp << int(abs(sft))
-                            else:
-                                val_fp = val_fp >> int(abs(sft))
-                            if s == 1:
-                                val_fp = -val_fp
-                            x_result[i][j] += float(val_fp)
-
+                    x_result[i][j] += math.ldexp(val, sft) * math.pow(-1, s)
 
         x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
 
@@ -159,12 +121,43 @@ class DenseShift(Layer):
         return x_result
 
     def call(self, x):
+        #return self.inference_fun(x)
+
+        x_numpy = x.numpy()
+        shift_numpy = self.shift.numpy()
+        sign_numpy = self.sign.numpy()
+
+        x_result = np.zeros((x_numpy.shape[0], self.output_dim))
+
+
+        # TODO: handle arbitrary dimensions
+        for i in range(x_numpy.shape[0]):
+            for j in range(self.output_dim):
+                for k in range(x_numpy.shape[1]):
+                    val = x_numpy[i][k]
+                    s = sign_numpy[k][j]
+                    sft = shift_numpy[k][j]
+
+                    print("val: " + str(val))
+                    print("sign: " + str(s))
+                    print("shift: " + str(sft))
+
+                    x_result[i][j] += math.ldexp(val, int(sft)) * math.pow(-1, s)
+
+
+        x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
+
+        x_result += self.bias
+
+        return x_result
+
+        '''
         if K.in_train_phase(True, False):
             W = K.pow(self.twos, self.shift) * K.pow(self.minusones, self.sign)
             return K.dot(x,W) + self.bias
         else:
             return self.inference_fun(x)
-
+        '''
 
 
     def compute_output_shape(self, input_shape):
