@@ -35,7 +35,7 @@ class RoundToFixed(Layer):
             for i in range(x_numpy.shape[0]):
                 for j in range(x_numpy.shape[1]):
                     val = x_numpy[i][j]
-                    x_rounded[i][j] = float(FXnum(np.asscalar(val)))
+                    x_rounded[i][j] = float(FXnum((val)))
 
             x_rounded = tf.convert_to_tensor(x_rounded, dtype=tf.float32)
 
