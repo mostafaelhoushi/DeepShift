@@ -9,11 +9,11 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 
 | Model | Dataset | Original Version | DeepShift Version | 
 |-------| ------- | -------------------------- | ----------------------------- |
-| ResNet20 | CIFAR10 | 92.16% | 77.02% |
-| ResNet32 | CIFAR10 | 92.46% | 85.54% |
-| ResNet44 | CIFAR10 | 92.50% | 85.34% |
-| ResNet50 | CIFAR10 | N/A | 86.23% |
-| ResNet56 | CIFAR10 | 92.71% |  86.30% |
+| ResNet20 | CIFAR10 | 92.16% | <del>77.02%<del> |
+| ResNet32 | CIFAR10 | 92.46% | <del>85.54%<del> |
+| ResNet44 | CIFAR10 | 92.50% | <del>85.34%<del> |
+| ResNet50 | CIFAR10 | N/A | <del>86.23%<del> |
+| ResNet56 | CIFAR10 | 92.71% |  <del>86.30%<del> |
 
 #### Converting Some Layers
 Converting only the last `N_shift` convolution layers (as well as the last fully connected layer) to shift layers.
@@ -22,11 +22,11 @@ The table below shows the validation accuracy results for ResNet50 on CIFAR10:
 | # Conv2D Layers | # Conv2DShift Layers | Accuracy |
 | --------------- | -------------------- | -------- |
 | 51 | 0 | 91.93% |
-| 39 | 12 | 92.14% |
-| 29 | 22 | 91.65% |
-| 19 | 32 | 88.83% |
-| 9 | 42 | 88.12% |
-| 0 | 51 | 86.23% |
+| 39 | 12 | <del>92.14%<del> |
+| 29 | 22 | <del>91.65%<del> |
+| 19 | 32 | <del>88.83%<del> |
+| 9 | 42 | <del>88.12%<del> |
+| 0 | 51 | <del>86.23%<del> |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
