@@ -12,7 +12,7 @@ from tensorflow.python.keras.constraints import Constraint
 from tensorflow.python.keras.regularizers import L1L2
 
 from tensorflow.python.framework import tensor_shape
-
+import time
 class IntegerConstraint (Constraint):
     def __init__(self, low=None, high=None, **kwargs):
         super(IntegerConstraint, self).__init__(**kwargs)
@@ -100,6 +100,7 @@ class DenseShift(Layer):
         super(DenseShift, self).build(input_shape)
 
     def inference_fun(self, x):
+        start_time = time.time()
         x_numpy = x.numpy()
         shift_numpy = self.shift.numpy()
         sign_numpy = self.sign.numpy()
@@ -109,7 +110,7 @@ class DenseShift(Layer):
         # TODO: handle arbitrary dimensions
         for i in range(x_numpy.shape[0]):
             for j in range(self.output_dim):
-                for k in range(x_numpy.shape[1]):
+                for k in range(0, x_numpy.shape[1], 3):
                     val = x_numpy[i][k]
                     s = sign_numpy[k][j]
                     sft = shift_numpy[k][j]
@@ -122,10 +123,38 @@ class DenseShift(Layer):
                             val_fp = val_fp >> int(abs(sft))
                         x_result[i][j] += float(val_fp) * math.pow(-1, s)
 
+                    #for k+1
+                    if (k+1 < x_numpy.shape[1]):
+                        val = x_numpy[i][k+1]
+                        s = sign_numpy[k+1][j]
+                        sft = shift_numpy[k+1][j]
+                        if (val != 0):
+                            val_fp = FXnum(val)
+
+                            if (sft > 0):
+                                val_fp = val_fp << int(abs(sft))
+                            else:
+                                val_fp = val_fp >> int(abs(sft))
+                            x_result[i][j] += float(val_fp) * math.pow(-1, s)
+
+                    #for k+2
+                    if (k+2 < x_numpy.shape[1]):
+                        val = x_numpy[i][k+2]
+                        s = sign_numpy[k+2][j]
+                        sft = shift_numpy[k+2][j]
+                        if (val != 0):
+                            val_fp = FXnum(val)
+
+                            if (sft > 0):
+                                val_fp = val_fp << int(abs(sft))
+                            else:
+                                val_fp = val_fp >> int(abs(sft))
+                            x_result[i][j] += float(val_fp) * math.pow(-1, s)
+
         x_result = tf.convert_to_tensor(x_result, dtype=np.float32)
 
         x_result += self.bias
-
+        print ("elapsed time: ",time.time() - start_time)
         return x_result
 
     def call(self, x):
