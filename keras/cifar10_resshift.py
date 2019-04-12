@@ -227,6 +227,16 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 	print('Test loss:', scores[0])
 	print('Test accuracy:', scores[1])
 
+    # TODO: obtain best accuracy model and save it separately
+
+    # save weights to .csv files to verify
+    for layer in model.layers:
+    print("Layer: " + layer.name)
+    if isinstance(layer, Conv2DShift) or isinstance(layer, DenseShift):
+        for index, w in enumerate(layer.get_weights()):
+            weights_csv_name = layer.name + "_" + str(index) + ".csv"
+            np.savetxt(os.path.join(model_dir, weights_csv_name), w, delimiter=",")
+
 
 def lr_schedule(epoch):
     """Learning Rate Schedule
