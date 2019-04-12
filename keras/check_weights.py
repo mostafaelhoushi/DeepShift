@@ -15,12 +15,21 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-#model = load_model("./saved_models.shift_last_stack_only/cifar10_ResNet20v1_model.144.h5", custom_objects={'Conv2DShift': Conv2DShift, 'DenseShift': DenseShift})
-model = resnet_v1(input_shape=(32,32,3), depth=20, shift_depth=56)
-model.load_weights("./saved_models/cifar10_ResNet20v1_model_shift_22/model.003.h5")
+model_dir = "./saved_models/cifar10_ResNet50v1_model_shift_10/"
+model_file = "model.164.h5"
 
+model = resnet_v1(input_shape=(32,32,3), depth=50, shift_depth=10)
+model.load_weights(os.path.join(model_dir, model_file))
+
+count = 0
 for layer in model.layers:
   if isinstance(layer, Conv2DShift) or isinstance(layer, DenseShift):
     print(layer.name)
     print(len(layer.get_weights()))
     print(layer.get_weights())
+
+    for index, w in enumerate(layer.get_weights()):
+      weights_csv_name = layer.name + "_" + str(index) + ".csv"
+      if len(w.shape) > 2:
+        w = np.reshape(np.transpose(w, (1,0,2,3)), (w.shape[0],-1))
+      np.savetxt(os.path.join(model_dir, weights_csv_name), w, fmt="%1.4f", delimiter=",")

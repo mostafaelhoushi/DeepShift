@@ -234,8 +234,9 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 		print("Layer: " + layer.name)
 		if isinstance(layer, Conv2DShift) or isinstance(layer, DenseShift):
 			for index, w in enumerate(layer.get_weights()):
-				weights_csv_name = layer.name + "_" + str(index) + ".csv"
-				np.savetxt(os.path.join(model_dir, weights_csv_name), w, delimiter=",")
+				if len(w.shape) > 2:
+					w = np.reshape(np.transpose(w, (1,0,2,3)), (w.shape[0],-1))
+				np.savetxt(os.path.join(model_dir, weights_csv_name), w, fmt="%1.4f", delimiter=",")
 
 
 def lr_schedule(epoch):
