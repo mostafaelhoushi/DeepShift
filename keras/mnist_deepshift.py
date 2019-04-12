@@ -8,15 +8,9 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-<<<<<<< HEAD
 from tensorflow.python.keras.datasets import mnist
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense, Dropout, Activation, Lambda
-=======
-from tensorflow.keras.datasets import mnist
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout, Activation, Lambda
->>>>>>> 65fc3b3... use in_train_phase to save time on training.
 
 from shift_layer import *
 from round_fixed import *
