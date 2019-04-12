@@ -155,15 +155,8 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 								   
 	csv_logger = CSVLogger(os.path.join(model_dir,"model"+ "_train_log.csv"))
 
-<<<<<<< HEAD
-	if shift_depth==0:
-		callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
-	else:
-		callbacks = [checkpoint, lr_reducer, csv_logger]
-=======
 	# callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
 	callbacks = [checkpoint, csv_logger]
->>>>>>> f67f29b... get conv and resnet to work in eager execution mode
 
 	# Run training, with or without data augmentation.
 	if not data_augmentation:
