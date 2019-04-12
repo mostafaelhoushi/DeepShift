@@ -15,10 +15,10 @@ import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-model_dir = "./saved_models/cifar10_ResNet50v1_model_shift_10/"
-model_file = "model.164.h5"
+model_dir = "./selected_models/cifar10_ResNet50v1_model_shift_20/"
+model_file = "model.040.h5"
 
-model = resnet_v1(input_shape=(32,32,3), depth=50, shift_depth=10)
+model = resnet_v1(input_shape=(32,32,3), depth=50, shift_depth=20)
 model.load_weights(os.path.join(model_dir, model_file))
 
 count = 0

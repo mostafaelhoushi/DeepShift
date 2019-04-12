@@ -23,7 +23,7 @@ The table below shows the validation accuracy results for ResNet50 on CIFAR10:
 | --------------- | -------------------- | -------- |
 | 51 | 0 | 91.93% |
 | 39 | 12 | 92.090% <del>92.14%<del> |
-| 29 | 22 | <del>91.65%<del> |
+| 29 | 22 | 87.02% <del>91.65%<del> |
 | 19 | 32 | <del>88.83%<del> |
 | 9 | 42 | <del>88.12%<del> |
 | 0 | 51 | <del>86.23%<del> |
