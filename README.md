@@ -12,7 +12,7 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 | ResNet20 | CIFAR10 | 92.16% | <del>77.02%<del> |
 | ResNet32 | CIFAR10 | 92.46% | <del>85.54%<del> |
 | ResNet44 | CIFAR10 | 92.50% | <del>85.34%<del> |
-| ResNet50 | CIFAR10 | 91.93% | <del>86.23%<del> |
+| ResNet50 | CIFAR10 | N/A | 61.97% <del>86.23%<del> |
 | ResNet56 | CIFAR10 | 92.71% |  <del>86.30%<del> |
 | ResNet110 | CIFAR10 | 92.65% | 67.86% |
 
@@ -27,7 +27,7 @@ The table below shows the validation accuracy results for ResNet50 on CIFAR10:
 | 29 | 22 | 87.02% <del>91.65%<del> |
 | 19 | 32 | 82.81% <del>88.83%<del> |
 | 9 | 42 | 78.42% <del>88.12%<del> |
-| 0 | 51 | <del>86.23%<del> |
+| 0 | 51 | 61.97% <del>86.23%<del> |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
