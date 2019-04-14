@@ -113,7 +113,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 	y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
 	if version == 2:
-		model = resnet_v2(input_shape=input_shape, depth=depth)
+		model = resnet_v2(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 	else:
 		model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 
@@ -231,7 +231,6 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
 
     # save weights to .csv files to verify
 	for layer in model.layers:
-		print("Layer: " + layer.name)
 		if isinstance(layer, Conv2DShift) or isinstance(layer, DenseShift):
 			for index, w in enumerate(layer.get_weights()):
 				weights_csv_name = layer.name + "_" + str(index) + ".csv"
@@ -283,7 +282,7 @@ def resnet_layer(inputs,
     # Returns
         x (tensor): tensor as input to the next layer
     """
-
+    
     if use_shift == False:
         conv = Conv2D(num_filters,
                     kernel_size=kernel_size,
@@ -407,7 +406,7 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
     return model
 
 
-def resnet_v2(input_shape, depth, num_classes=10):
+def resnet_v2(input_shape, depth, num_classes=10, shift_depth=0):
     """ResNet Version 2 Model builder [b]
     Stacks of (1 x 1)-(3 x 3)-(1 x 1) BN-ReLU-Conv2D or also known as
     bottleneck layer

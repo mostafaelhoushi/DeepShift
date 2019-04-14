@@ -68,12 +68,18 @@ history = model.fit(x_train, y_train,
                     epochs=epochs,
                     verbose=1,
                     validation_data=(x_test, y_test))
-score = model.evaluate(x_test, y_test, verbose=0)
+
+print("==== Set inference of model to bitwise mode ===")
+# Infer using bitwise shifts
+for layer in model.layers:
+    if isinstance(layer, DenseShift):
+            layer.enable_bitwise_infer(True)
+
+print("=== Infer model ===")
+score = model.evaluate(x_test, y_test)
 print('Test loss:', score[0])
 print('Test accuracy:', score[1])
-#sample code on using fixed point package
-x = FXnum(22)
-print("========",x,"===========")
+
 
 for layer in model.layers:
     print("Layer: " + layer.name)
