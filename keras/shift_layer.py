@@ -33,6 +33,13 @@ class IntegerConstraint (Constraint):
 
         return res
 
+class ConvertToSignConstraint (Constraint):
+    def __init__(self, **kwargs):
+        super(ConvertToSignConstraint, self).__init__(**kwargs)
+
+    def __call__(self, w):
+        return K.cast(K.greater_equal(w, 0), dtype='float32')*(+1) + K.cast(K.less(w,0), dtype='float32')*(-1)    
+
 class RoundedRandomUniform(RandomUniform):
     def __init__(self, minval=-10, maxval=-1, seed=None):
         super(RoundedRandomUniform, self).__init__(minval, maxval, seed)
