@@ -84,4 +84,4 @@ print('Test accuracy:', score[1])
 for layer in model.layers:
     print("Layer: " + layer.name)
     for index, w in enumerate(layer.get_weights()):
-        np.savetxt(layer.name + "_" + str(index) + ".csv", w, delimiter=",")
+        np.savetxt(layer.name + "_" + str(index) + ".csv", w, fmt="%1.6f", delimiter=",")
