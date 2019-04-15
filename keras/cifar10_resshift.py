@@ -349,9 +349,9 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
     conv_so_far = 0
     use_shift = False
 
-    conv_so_far += 1
-    use_shift = (depth - conv_so_far <= shift_depth)
+    use_shift = (depth - conv_so_far < shift_depth)
     x = resnet_layer(inputs=inputs, use_shift=use_shift)
+    conv_so_far += 1
 
     # Instantiate the stack of residual units
     for stack in range(3):
@@ -360,25 +360,24 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 strides = 2  # downsample
             
-            conv_so_far += 1
-            use_shift = (depth - conv_so_far <= shift_depth)
+            use_shift = (depth - conv_so_far < shift_depth)
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
                              strides=strides,
                              use_shift=use_shift)
-
             conv_so_far += 1
-            use_shift = (depth - conv_so_far <= shift_depth)
+
+            use_shift = (depth - conv_so_far < shift_depth)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
                              activation=None,
                              use_shift=use_shift)
+            conv_so_far += 1
 
             if stack > 0 and res_block == 0:  # first layer but not first stack
                 # linear projection residual shortcut connection to match
                 # changed dims
-                conv_so_far += 1
-                use_shift = (depth - conv_so_far <= shift_depth)
+                use_shift = (depth - conv_so_far < shift_depth)
                 x = resnet_layer(inputs=x,
                                  num_filters=num_filters,
                                  kernel_size=1,
@@ -386,6 +385,7 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
                                  activation=None,
                                  batch_normalization=False,
                                  use_shift=use_shift)
+                conv_so_far += 1
 
             x = tf.keras.layers.add([x, y])
             x = Activation('relu')(x)
@@ -433,12 +433,16 @@ def resnet_v2(input_shape, depth, num_classes=10, shift_depth=0):
     # Start model definition.
     num_filters_in = 16
     num_res_blocks = int((depth - 2) / 9)
+    conv_so_far = 0
 
     inputs = Input(shape=input_shape)
     # v2 performs Conv2D with BN-ReLU on input before splitting into 2 paths
+    use_shift = (depth - conv_so_far < shift_depth)
     x = resnet_layer(inputs=inputs,
                      num_filters=num_filters_in,
-                     conv_first=True)
+                     conv_first=True,
+                     use_shift=use_shift)
+    conv_so_far += 1
 
     # Instantiate the stack of residual units
     for stage in range(3):
@@ -457,29 +461,45 @@ def resnet_v2(input_shape, depth, num_classes=10, shift_depth=0):
                     strides = 2    # downsample
 
             # bottleneck residual unit
+            use_shift = (depth - conv_so_far < shift_depth)
             y = resnet_layer(inputs=x,
                              num_filters=num_filters_in,
                              kernel_size=1,
                              strides=strides,
                              activation=activation,
                              batch_normalization=batch_normalization,
-                             conv_first=False)
+                             conv_first=False,
+                             use_shift=use_shift)
+            conv_so_far += 1
+
+            use_shift = (depth - conv_so_far < shift_depth)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters_in,
-                             conv_first=False)
+                             conv_first=False,
+                             use_shift = use_shift)
+            conv_so_far += 1
+
+            use_shift = (depth - conv_so_far < shift_depth)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters_out,
                              kernel_size=1,
-                             conv_first=False)
+                             conv_first=False,
+                             use_shift=use_shift)
+            conv_so_far += 1
+
             if res_block == 0:
                 # linear projection residual shortcut connection to match
                 # changed dims
+                use_shift = (depth - conv_so_far < shift_depth)
                 x = resnet_layer(inputs=x,
                                  num_filters=num_filters_out,
                                  kernel_size=1,
                                  strides=strides,
                                  activation=None,
-                                 batch_normalization=False)
+                                 batch_normalization=False,
+                                 use_shift=use_shift)
+                conv_so_far += 1
+                
             x = keras.layers.add([x, y])
 
         num_filters_in = num_filters_out
