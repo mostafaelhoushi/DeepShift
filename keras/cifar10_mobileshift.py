@@ -16,6 +16,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger
 
 from shift_layer import *
 from convolutional_shift import *
+from convert_to_shift import *
 
 def cifar10_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=500):
     tf.enable_eager_execution()
@@ -51,6 +52,10 @@ def cifar10_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=
         model_type = "MobileNetV2"
     else:
         raise ValueError("version should be either 1 or 2")
+
+    # Convert layers to shift
+    if shift_depth > 0:
+        model = convert_to_shift(model)
 
     model.compile(loss='categorical_crossentropy',
                 optimizer=tf.train.AdamOptimizer(),

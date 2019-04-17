@@ -15,7 +15,6 @@ def convert_to_shift(model, num_layers = -1):
 
     x = inputs
     for i, layer in enumerate(layers):
-        print("in iteration i: ",i," and input shape is: ", x.shape, " for layer: ", layer.name)
         #x = layer(x)
         if type(layer) == Dense:
             input = layer.input
@@ -35,7 +34,6 @@ def convert_to_shift(model, num_layers = -1):
             weights = layer.weights
 
             # weights of Conv2D has shape: (filter_height, filter_width, channels_in, channels_out)
-            print("weights: ", weights[0].shape)
             filter_height, filter_width, _, channels_out = weights[0].shape.as_list()
             #TODO: copy all other attributes. Consider using get_config() and from_config()
             conv2d_shift_layer = Conv2DShift(filters=channels_out, kernel_size = (filter_height, filter_width)) 
@@ -49,10 +47,3 @@ def convert_to_shift(model, num_layers = -1):
     model_converted = Model(inputs=inputs, outputs=outputs)
     #TODO: Copy other attributes such as learning rate, optimizer, etc.
     return model_converted
-
-
-from tensorflow.keras.applications.mobilenet import MobileNet
-model = MobileNet(weights='imagenet')
-
-model_converted = convert_to_shift(model)
-model_converted.summary()
