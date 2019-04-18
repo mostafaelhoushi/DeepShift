@@ -5,45 +5,91 @@ from tensorflow.keras.models import Model
 from shift_layer import DenseShift
 from convolutional_shift import Conv2DShift
 
-def convert_to_shift(model, num_layers = -1):
-    # create input layer for new model
-    input_shape = model.input.shape[1:] # first shape element is batch size so don't copy it
-    inputs = tf.keras.Input(shape=input_shape)
+# Source: https://stackoverflow.com/a/54517478/3880948
+def insert_layer(model, layer_type, insert_layer_factory,
+                 insert_layer_name=None, position='replace'):
+    # copy the layers
+    layers = [l for l in model.layers]
 
-    # copy the layers - except the input layer - from original model
-    layers = [l for l in model.layers[1:]]
+    # Auxiliary dictionary to describe the network graph
+    network_dict = {'input_layers_of': {}, 'new_output_tensor_of': {}}
 
-    x = inputs
-    for i, layer in enumerate(layers):
-        #x = layer(x)
-        if type(layer) == Dense:
-            input = layer.input
-            output = layer.output
-            weights = layer.weights
+    # Set the input layers of each layer
+    for layer in layers:
+        for node in layer.outbound_nodes:
+            layer_name = node.outbound_layer.name
+            if layer_name not in network_dict['input_layers_of']:
+                network_dict['input_layers_of'].update(
+                        {layer_name: [layer.name]})
+            else:
+                if (layer.name not in network_dict['input_layers_of'][layer_name]):
+                    network_dict['input_layers_of'][layer_name].append(layer.name)
 
-            # weights of Dense has shape: (features_in, features_out)
-            _, features_out = weights[0].shape
-            #TODO: copy all other attributes. Consider using get_config() and from_config()
-            dense_shift_layer = DenseShift(weights[0].shape[-1]) 
+    # Set the output tensor of the input layer
+    network_dict['new_output_tensor_of'].update(
+            {layers[0].name: layers[0].input})
 
-            x = dense_shift_layer(x)
+    # Iterate over all layers after the input
+    for layer in layers[1:]:
+        # Determine input tensors
+        layer_input = [network_dict['new_output_tensor_of'][layer_aux] 
+                for layer_aux in network_dict['input_layers_of'][layer.name]]
+        print(layer_input)
+        if len(layer_input) == 1:
+            layer_input = layer_input[0]
 
-        elif type(layer) == Conv2D:
-            input = layer.input
-            output = layer.output
-            weights = layer.weights
+        # Insert layer if name matches the regular expression
+        if type(layer) == layer_type: 
+            if position == 'replace':
+                x = layer_input
+            elif position == 'after':
+                x = layer(layer_input)
+            elif position == 'before':
+                pass
+            else:
+                raise ValueError('position must be: before, after or replace')
 
-            # weights of Conv2D has shape: (filter_height, filter_width, channels_in, channels_out)
-            filter_height, filter_width, _, channels_out = weights[0].shape.as_list()
-            #TODO: copy all other attributes. Consider using get_config() and from_config()
-            conv2d_shift_layer = Conv2DShift(filters=channels_out, kernel_size = (filter_height, filter_width)) 
-
-            x = conv2d_shift_layer(x)
-
+            new_layer = insert_layer_factory(layer)
+            if insert_layer_name:
+                new_layer.name = insert_layer_name
+            
+            x = new_layer(x)
+            print('Layer {} inserted after layer {}'.format(new_layer.name,
+                                                            layer.name))
+            if position == 'before':
+                x = layer(x)
         else:
-            x = layer(x)
-    outputs = x
+            x = layer(layer_input)
 
-    model_converted = Model(inputs=inputs, outputs=outputs)
+        # Set new output tensor (the original one, or the one of the inserted
+        # layer)
+        network_dict['new_output_tensor_of'].update({layer.name: x})
+
+    return Model(inputs=layers[0].input, outputs=x)
+
+def convert_to_conv2d_shift(conv2d_layer):
+    if conv2d_layer.use_bias:
+        [weights, bias] = conv2d_layer.weights
+    else:
+        [weights] = conv2d_layer.weights
+
+    # weights of Conv2D has shape: (filter_height, filter_width, channels_in, channels_out)
+    filter_height, filter_width, _, channels_out = weights.shape.as_list()
+    #TODO: copy all other attributes. Consider using get_config() and from_config()
+    return Conv2DShift(filters=channels_out, kernel_size = (filter_height, filter_width)) 
+
+def convert_to_dense_shift(dense_layer):
+    [weights, bias] = dense_layer.weights
+
+    # weights of Dense has shape: (features_in, features_out)
+    _, features_out = weights.shape
+    #TODO: copy all other attributes. Consider using get_config() and from_config()
+    return DenseShift(features_out) 
+
+def convert_to_shift(model, num_layers = -1):
+    model_converted = insert_layer(model, Dense, convert_to_dense_shift)
+    model_converted.summary()
+    model_converted = insert_layer(model_converted, Conv2D, convert_to_conv2d_shift)
+
     #TODO: Copy other attributes such as learning rate, optimizer, etc.
     return model_converted
