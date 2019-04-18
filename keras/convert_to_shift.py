@@ -7,7 +7,7 @@ from convolutional_shift import Conv2DShift
 
 # Source: https://stackoverflow.com/a/54517478/3880948
 def insert_layer(model, layer_type, insert_layer_factory,
-                 insert_layer_name=None, position='replace'):
+                 insert_layer_name=None, position='replace', num_to_replace=None):
     # copy the layers
     layers = [l for l in model.layers]
 
@@ -29,35 +29,46 @@ def insert_layer(model, layer_type, insert_layer_factory,
     network_dict['new_output_tensor_of'].update(
             {layers[0].name: layers[0].input})
 
+    # count number of instances to keep
+    num_layer_type = sum(1 for l in layers if type(l)==layer_type)
+    if (num_to_replace is not None):
+        num_layer_keep = max(num_layer_type - num_to_replace, 0)
+    else:
+        num_layer_keep = num_layer_type
+
+    num_layer_kept = 0
     # Iterate over all layers after the input
     for layer in layers[1:]:
         # Determine input tensors
         layer_input = [network_dict['new_output_tensor_of'][layer_aux] 
                 for layer_aux in network_dict['input_layers_of'][layer.name]]
-        print(layer_input)
         if len(layer_input) == 1:
             layer_input = layer_input[0]
 
         # Insert layer if name matches the regular expression
-        if type(layer) == layer_type: 
-            if position == 'replace':
-                x = layer_input
-            elif position == 'after':
-                x = layer(layer_input)
-            elif position == 'before':
-                pass
-            else:
-                raise ValueError('position must be: before, after or replace')
+        if type(layer) == layer_type:
+            num_layer_kept += 1
+            if num_layer_kept > num_layer_keep: 
+                if position == 'replace':
+                    x = layer_input
+                elif position == 'after':
+                    x = layer(layer_input)
+                elif position == 'before':
+                    pass
+                else:
+                    raise ValueError('position must be: before, after or replace')
 
-            new_layer = insert_layer_factory(layer)
-            if insert_layer_name:
-                new_layer.name = insert_layer_name
-            
-            x = new_layer(x)
-            print('Layer {} inserted after layer {}'.format(new_layer.name,
-                                                            layer.name))
-            if position == 'before':
-                x = layer(x)
+                new_layer = insert_layer_factory(layer)
+                if insert_layer_name:
+                    new_layer.name = insert_layer_name
+                
+                x = new_layer(x)
+                print('Layer {} inserted after layer {}'.format(new_layer.name,
+                                                                layer.name))
+                if position == 'before':
+                    x = layer(x)
+            else:
+                x = layer(layer_input)
         else:
             x = layer(layer_input)
 
@@ -86,10 +97,10 @@ def convert_to_dense_shift(dense_layer):
     #TODO: copy all other attributes. Consider using get_config() and from_config()
     return DenseShift(features_out) 
 
-def convert_to_shift(model, num_layers = -1):
-    model_converted = insert_layer(model, Dense, convert_to_dense_shift)
+def convert_to_shift(model, num_to_replace = None):
+    model_converted = insert_layer(model, Dense, convert_to_dense_shift, num_to_replace = 1)
     model_converted.summary()
-    model_converted = insert_layer(model_converted, Conv2D, convert_to_conv2d_shift)
+    model_converted = insert_layer(model_converted, Conv2D, convert_to_conv2d_shift, num_to_replace = num_to_replace)
 
     #TODO: Copy other attributes such as learning rate, optimizer, etc.
     return model_converted

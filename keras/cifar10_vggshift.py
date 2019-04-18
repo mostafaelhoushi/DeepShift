@@ -52,7 +52,7 @@ def cifar10_mobilenet(depth = 16, loss='categorical_crossentropy', shift_depth=0
 
     # Convert layers to shift
     if shift_depth > 0:
-        model = convert_to_shift(model)
+        model = convert_to_shift(model, num_to_replace=shift_depth)
 
     model.compile(loss='categorical_crossentropy',
                 optimizer=tf.train.AdamOptimizer(),
