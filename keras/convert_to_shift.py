@@ -1,9 +1,9 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Conv2D, Dense
+from tensorflow.keras.layers import Dense, Conv2D, DepthwiseConv2D
 from tensorflow.keras.models import Model
 
 from shift_layer import DenseShift
-from convolutional_shift import Conv2DShift
+from convolutional_shift import Conv2DShift, DepthwiseConv2DShift
 
 def convert_to_shift(model, num_layers = -1, num_to_replace=None):
     # create input layer for new model
@@ -14,7 +14,7 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None):
     layers = [l for l in model.layers[1:]]
 
     # count number of instances to keep
-    num_layer_type = sum(1 for l in layers if type(l)==Conv2D)
+    num_layer_type = sum(1 for l in layers if type(l)==Conv2D or type(l)==DepthwiseConv2D)
     if (num_to_replace is not None):
         num_layer_keep = max(num_layer_type - num_to_replace, 0)
     else:
@@ -48,6 +48,24 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None):
                 conv2d_shift_layer = Conv2DShift(filters=channels_out, kernel_size = (filter_height, filter_width)) 
 
                 x = conv2d_shift_layer(x)
+            else:
+                x = layer(x)
+
+        elif type(layer) == DepthwiseConv2D:
+            num_layer_kept += 1
+            if num_layer_kept > num_layer_keep: 
+                input = layer.input
+                output = layer.output
+                weights = layer.weights
+
+                # weights of DepthwiseConv2D has shape: (filter_height, filter_width, channels_in, channels_multiplier)
+                filter_height, filter_width, _, channels_multiplier = weights[0].shape.as_list()
+                #depthwise_conv2d_shift_layer = DepthwiseConv2DShift(kernel_size = (filter_height, filter_width), depth_multiplier=channels_multiplier) 
+                config = layer.get_config()
+                config.pop("name")
+                depthwise_conv2d_shift_layer = DepthwiseConv2DShift.from_config(config)
+
+                x = depthwise_conv2d_shift_layer(x)
             else:
                 x = layer(x)
 

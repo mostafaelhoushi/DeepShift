@@ -18,7 +18,7 @@ from shift_layer import *
 from convolutional_shift import *
 from convert_to_shift import *
 
-def cifar10_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=500):
+def cifar10_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=500, desc=""):
     tf.enable_eager_execution()
 
     batch_size = 32
@@ -64,7 +64,10 @@ def cifar10_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=
     model.summary()
 
     # Prepare model model saving directory.
-    model_name = 'cifar10_%s_model_shift_%s' % (model_type,shift_depth)
+    if desc is not None and len(desc) > 0:
+        model_name = 'cifar10_%s_model_%s_shift_%s' % (model_type,desc,shift_depth)
+    else:
+        model_name = 'cifar10_%s_model_shift_%s' % (model_type,shift_depth)
     model_dir = os.path.join(os.path.join(os.getcwd(), 'saved_models'), model_name)
     model_checkpoint_name = 'model' + '.{epoch:03d}.h5'
     if not os.path.isdir(model_dir):
@@ -118,7 +121,8 @@ if __name__== "__main__":
     parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
     parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
     parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train (default: 500)')
+    parser.add_argument('--desc', default="", help="description to append to model directory")
 
     args = parser.parse_args()
     
-    cifar10_mobilenet(args.version, args.loss, args.shift_depth, args.epochs)
+    cifar10_mobilenet(args.version, args.loss, args.shift_depth, args.epochs, args.desc)
