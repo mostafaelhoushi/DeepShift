@@ -40,6 +40,7 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | 10 | 14 | **6** | **0** | 99.7% | **78.15%** |
 | 7 | 14 | **9** | **0** | 99.4% | **76.69%** |
 | 4 | 14 | **12** | **0** | 92.5% | **73.23%** |
+| 0 | 14 | **16** | **0** | 92.5% | **70.34%** |
 
 
 ### Codewalk Through
