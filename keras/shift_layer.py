@@ -170,11 +170,15 @@ class DenseShift(Layer):
         return x_result
 
     def call(self, x):
+        W = K.pow(self.twos, self.shift) * K.pow(self.minusones, self.sign)
+        return K.dot(x,W) + self.bias
+        '''
         if K.in_train_phase(True, False):
             W = K.pow(self.twos, self.shift) * K.pow(self.minusones, self.sign)
             return K.dot(x,W) + self.bias
         else:
             return self.inference_fun(x)
+        '''
 
 
 

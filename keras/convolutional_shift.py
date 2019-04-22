@@ -149,15 +149,18 @@ class Conv2DShift(ConvShift):
                                             bias_constraint=constraints.get(bias_constraint),
                                             **kwargs)
 
-        def inference_fun(self, x):
-                # TODO: implement bitwise
-                return super(Conv2DShift, self).call(x)
+    def inference_fun(self, x):
+        # TODO: implement bitwise
+        return super(Conv2DShift, self).call(x)
 
-        def call(self, inputs):
-                if K.in_train_phase(True, False):
-                        return super(Conv2DShift, self).call(x)
-                else:
-                        return self.inference_fun(x)
+    def call(self, inputs):
+        return super(Conv2DShift, self).call(inputs)
+        '''
+        if K.in_train_phase(True, False):
+                return super(Conv2DShift, self).call(inputs)
+        else:
+                return self.inference_fun(inputs)
+        '''
 
 class DepthwiseConv2DShift(Conv2DShift):
     def __init__(self,
