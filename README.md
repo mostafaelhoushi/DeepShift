@@ -34,7 +34,7 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 
 | # Conv2D Layers | # DWConv2D Layers | **# Conv2DShift Layers** | **# DWConv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
 | --------------- | ----------------- | -------------------- | ---------------------- | ----------------- | ------------------- |
-| 10 | 9 |**7** | **5** | 99.7% | **77.16%** |
+| 13 | 14 | **3** | **0** | 99.7% | **79.11%** |
 
 
 ### Codewalk Through
