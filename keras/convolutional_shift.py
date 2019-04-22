@@ -188,6 +188,7 @@ class DepthwiseConv2DShift(Conv2DShift):
             activity_regularizer=activity_regularizer,
             bias_constraint=bias_constraint,
             **kwargs)
+        #TODO: Better handling of overriding initializer and constraint
         self.depth_multiplier = depth_multiplier
         self.depthwise_initializer = initializers.get(depthwise_initializer)
         self.depthwise_regularizer = regularizers.get(depthwise_regularizer)
@@ -214,17 +215,17 @@ class DepthwiseConv2DShift(Conv2DShift):
 
         self.depthwise_kernel = self.add_weight(
                 shape=depthwise_kernel_shape,
-                initializer=self.depthwise_initializer,
+                initializer=RoundedRandomUniform(), # self.depthwise_initializer,
                 name='depthwise_kernel',
                 regularizer=self.depthwise_regularizer,
-                constraint=self.depthwise_constraint)
+                constraint=IntegerConstraint()) # self.depthwise_constraint)
 
         if self.use_bias:
             self.bias = self.add_weight(shape=(input_dim * self.depth_multiplier,),
-                                                                    initializer=self.bias_initializer,
-                                                                    name='bias',
-                                                                    regularizer=self.bias_regularizer,
-                                                                    constraint=self.bias_constraint)
+                                        initializer=self.bias_initializer,
+                                        name='bias',
+                                        regularizer=self.bias_regularizer,
+                                        constraint=self.bias_constraint)
         else:
             self.bias = None
 
