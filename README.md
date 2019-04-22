@@ -9,6 +9,7 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 
 | Model | Dataset | Original Version | DeepShift Version | 
 |-------| ------- | -------------------------- | ----------------------------- |
+| MobileNet | CIFAR10 | 78.05% | TBD |
 | ResNet20 | CIFAR10 | 92.16% | <del>77.02%<del> |
 | ResNet32 | CIFAR10 | 92.46% | <del>85.54%<del> |
 | ResNet44 | CIFAR10 | 92.50% | <del>85.34%<del> |
@@ -36,6 +37,7 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | --------------- | ----------------- | -------------------- | ---------------------- | ----------------- | ------------------- |
 | 16 | 14 | **0** | **0** | 99.7% | **78.05%** |
 | 13 | 14 | **3** | **0** | 99.7% | **79.11%** |
+| 10 | 14 | **6** | **0** | 99.7% | **78.15%** |
 
 
 ### Codewalk Through
