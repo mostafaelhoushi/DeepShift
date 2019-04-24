@@ -90,10 +90,6 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weight
         elif type(layer) == DepthwiseConv2D:
             num_layer_kept += 1
             if num_layer_kept > num_layer_keep: 
-                input = layer.input
-                output = layer.output
-                weights = layer.weights
-
                 config = layer.get_config()
                 config.pop("name")
                 depthwise_conv2d_shift_layer = DepthwiseConv2DShift.from_config(config)
@@ -105,7 +101,6 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weight
                         [kernel, bias] = layer.get_weights()
                     else:
                         [kernel] = layer.get_weights()
-                        bias = np.zeros(shape=(channels_out,))
 
                     #TODO: if attributes copied, then need to check has_bias also on conv2d_shift_layer
 
@@ -115,8 +110,11 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weight
                     sign = sign.numpy()
                     sign[sign == 1] = 0
                     sign[sign == -1] = 1
-                    
-                    new_weights = [shift, bias, sign]
+
+                    if layer.use_bias:
+                        new_weights = [shift, bias, sign]
+                    else:
+                        new_weights = [shift, sign]
                     
                     depthwise_conv2d_shift_layer.set_weights(new_weights)
             else:
