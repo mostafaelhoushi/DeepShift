@@ -68,175 +68,177 @@ tf.enable_eager_execution()
 # version: Model version
 # Orig paper: version = 1 (ResNet v1), Improved ResNet: version = 2 (ResNet v2)
 
-def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_depth=0):
-	# Training parameters
-	batch_size = 32  # orig paper trained all networks with batch_size=128
-	epochs = 200
-	data_augmentation = True
-	num_classes = 10
+def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=200, desc=""):
+    # Training parameters
+    batch_size = 32  # orig paper trained all networks with batch_size=128
+    data_augmentation = True
+    num_classes = 10
 
-	# Subtracting pixel mean improves accuracy
-	subtract_pixel_mean = True
+    # Subtracting pixel mean improves accuracy
+    subtract_pixel_mean = True
 
-	# Computed depth from supplied model parameter n
-	if version == 1:
-		depth = n * 6 + 2
-	elif version == 2:
-		depth = n * 9 + 2
+    # Computed depth from supplied model parameter n
+    if version == 1:
+        depth = n * 6 + 2
+    elif version == 2:
+        depth = n * 9 + 2
 
-	# Model name, depth and version
-	model_type = 'ResNet%dv%d' % (depth, version)
+    # Model name, depth and version
+    model_type = 'ResNet%dv%d' % (depth, version)
 
-	# Load the CIFAR10 data.
-	(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+    # Load the CIFAR10 data.
+    (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
-	# Input image dimensions.
-	input_shape = x_train.shape[1:]
+    # Input image dimensions.
+    input_shape = x_train.shape[1:]
 
-	# Normalize data.
-	x_train = x_train.astype('float32') / 255
-	x_test = x_test.astype('float32') / 255
+    # Normalize data.
+    x_train = x_train.astype('float32') / 255
+    x_test = x_test.astype('float32') / 255
 
-	# If subtract pixel mean is enabled
-	if subtract_pixel_mean:
-		x_train_mean = np.mean(x_train, axis=0)
-		x_train -= x_train_mean
-		x_test -= x_train_mean
+    # If subtract pixel mean is enabled
+    if subtract_pixel_mean:
+        x_train_mean = np.mean(x_train, axis=0)
+        x_train -= x_train_mean
+        x_test -= x_train_mean
 
-	print('x_train shape:', x_train.shape)
-	print(x_train.shape[0], 'train samples')
-	print(x_test.shape[0], 'test samples')
-	print('y_train shape:', y_train.shape)
+    print('x_train shape:', x_train.shape)
+    print(x_train.shape[0], 'train samples')
+    print(x_test.shape[0], 'test samples')
+    print('y_train shape:', y_train.shape)
 
-	# Convert class vectors to binary class matrices.
-	y_train = tf.keras.utils.to_categorical(y_train, num_classes)
-	y_test = tf.keras.utils.to_categorical(y_test, num_classes)
+    # Convert class vectors to binary class matrices.
+    y_train = tf.keras.utils.to_categorical(y_train, num_classes)
+    y_test = tf.keras.utils.to_categorical(y_test, num_classes)
 
-	if version == 2:
-		model = resnet_v2(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
-	else:
-		model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
+    if version == 2:
+        model = resnet_v2(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
+    else:
+        model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 
-	model.compile(loss=loss,
-				  optimizer=tf.train.AdamOptimizer(learning_rate=lr_schedule(0)),
-				  metrics=['accuracy'])
-	model.summary()
-	print(model_type)
+    model.compile(loss=loss,
+                  optimizer=tf.train.AdamOptimizer(learning_rate=lr_schedule(0)),
+                  metrics=['accuracy'])
+    model.summary()
+    print(model_type)
 
-	# Prepare model model saving directory.
-	model_name = 'cifar10_%s_model_shift_%s' % (model_type,shift_depth)
-	model_dir = os.path.join(os.path.join(os.getcwd(), 'saved_models'), model_name)
-	model_checkpoint_name = 'model' + '.{epoch:03d}.h5'
-	if not os.path.isdir(model_dir):
-		os.makedirs(model_dir, exist_ok=True)
-	model_checkpoint_path = os.path.join(model_dir, model_checkpoint_name)
+    # Prepare model model saving directory.
+    if desc is not None and len(desc) > 0:
+        model_name = 'cifar10/%s/%s_shift_%s' % (model_type,desc,shift_depth)
+    else:
+        model_name = 'cifar10/%s/shift_%s' % (model_type,shift_depth)
+    model_dir = os.path.join(os.path.join(os.getcwd(), 'saved_models'), model_name)
+    model_checkpoint_name = 'model' + '.{epoch:03d}.h5'
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir, exist_ok=True)
+    model_checkpoint_path = os.path.join(model_dir, model_checkpoint_name)
 
-	model_summary_name = 'model_summary.txt'
-	model_summary_path = os.path.join(model_dir, model_summary_name)
-	with open(model_summary_path, 'w') as fp: 
-		model.summary(print_fn=lambda x: fp.write(x + '\n'))
+    model_summary_name = 'model_summary.txt'
+    model_summary_path = os.path.join(model_dir, model_summary_name)
+    with open(model_summary_path, 'w') as fp: 
+        model.summary(print_fn=lambda x: fp.write(x + '\n'))
 
-	# Prepare callbacks for model saving and for learning rate adjustment.
-	checkpoint = ModelCheckpoint(filepath=model_checkpoint_path,
-								 monitor='val_acc',
-								 verbose=1,
-								 save_best_only=True)
+    # Prepare callbacks for model saving and for learning rate adjustment.
+    checkpoint = ModelCheckpoint(filepath=model_checkpoint_path,
+                                 monitor='val_acc',
+                                 verbose=1,
+                                 save_best_only=True)
 
-	# TODO: fix lr_reducer and lr_scheduler for eager mode
-	lr_scheduler = LearningRateScheduler(lr_schedule)
+    # TODO: fix lr_reducer and lr_scheduler for eager mode
+    lr_scheduler = LearningRateScheduler(lr_schedule)
 
-	'''
-	# Not compatible with eager execution
-	lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
-								   cooldown=0,
-								   patience=5,
-								   min_lr=0.5e-6)
-	'''
-								   
-	csv_logger = CSVLogger(os.path.join(model_dir,"model"+ "_train_log.csv"))
+    '''
+    # Not compatible with eager execution
+    lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
+                                   cooldown=0,
+                                   patience=5,
+                                   min_lr=0.5e-6)
+    '''
+                                   
+    csv_logger = CSVLogger(os.path.join(model_dir,"model"+ "_train_log.csv"))
 
-	# callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
-	callbacks = [checkpoint, csv_logger]
-    
-	# Run training, with or without data augmentation.
-	if not data_augmentation:
-		print('Not using data augmentation.')
-		model.fit(x_train, y_train,
-				  batch_size=batch_size,
-				  epochs=epochs,
-				  validation_data=(x_test, y_test),
-				  shuffle=True,
-				  callbacks=callbacks)
-	else:
-		print('Using real-time data augmentation.')
-		# This will do preprocessing and realtime data augmentation:
-		datagen = ImageDataGenerator(
-			# set input mean to 0 over the dataset
-			featurewise_center=False,
-			# set each sample mean to 0
-			samplewise_center=False,
-			# divide inputs by std of dataset
-			featurewise_std_normalization=False,
-			# divide each input by its std
-			samplewise_std_normalization=False,
-			# apply ZCA whitening
-			zca_whitening=False,
-			# epsilon for ZCA whitening
-			zca_epsilon=1e-06,
-			# randomly rotate images in the range (deg 0 to 180)
-			rotation_range=0,
-			# randomly shift images horizontally
-			width_shift_range=0.1,
-			# randomly shift images vertically
-			height_shift_range=0.1,
-			# set range for random shear
-			shear_range=0.,
-			# set range for random zoom
-			zoom_range=0.,
-			# set range for random channel shifts
-			channel_shift_range=0.,
-			# set mode for filling points outside the input boundaries
-			fill_mode='nearest',
-			# value used for fill_mode = "constant"
-			cval=0.,
-			# randomly flip images
-			horizontal_flip=True,
-			# randomly flip images
-			vertical_flip=False,
-			# set rescaling factor (applied before any other transformation)
-			rescale=None,
-			# set function that will be applied on each input
-			preprocessing_function=None,
-			# image data format, either "channels_first" or "channels_last"
-			data_format=None,
-			# fraction of images reserved for validation (strictly between 0 and 1)
-			validation_split=0.0)
+    # callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
+    callbacks = [checkpoint, csv_logger]
 
-		# Compute quantities required for featurewise normalization
-		# (std, mean, and principal components if ZCA whitening is applied).
-		datagen.fit(x_train)
+    # Run training, with or without data augmentation.
+    if not data_augmentation:
+        print('Not using data augmentation.')
+        model.fit(x_train, y_train,
+                  batch_size=batch_size,
+                  epochs=epochs,
+                  validation_data=(x_test, y_test),
+                  shuffle=True,
+                  callbacks=callbacks)
+    else:
+        print('Using real-time data augmentation.')
+        # This will do preprocessing and realtime data augmentation:
+        datagen = ImageDataGenerator(
+            # set input mean to 0 over the dataset
+            featurewise_center=False,
+            # set each sample mean to 0
+            samplewise_center=False,
+            # divide inputs by std of dataset
+            featurewise_std_normalization=False,
+            # divide each input by its std
+            samplewise_std_normalization=False,
+            # apply ZCA whitening
+            zca_whitening=False,
+            # epsilon for ZCA whitening
+            zca_epsilon=1e-06,
+            # randomly rotate images in the range (deg 0 to 180)
+            rotation_range=0,
+            # randomly shift images horizontally
+            width_shift_range=0.1,
+            # randomly shift images vertically
+            height_shift_range=0.1,
+            # set range for random shear
+            shear_range=0.,
+            # set range for random zoom
+            zoom_range=0.,
+            # set range for random channel shifts
+            channel_shift_range=0.,
+            # set mode for filling points outside the input boundaries
+            fill_mode='nearest',
+            # value used for fill_mode = "constant"
+            cval=0.,
+            # randomly flip images
+            horizontal_flip=True,
+            # randomly flip images
+            vertical_flip=False,
+            # set rescaling factor (applied before any other transformation)
+            rescale=None,
+            # set function that will be applied on each input
+            preprocessing_function=None,
+            # image data format, either "channels_first" or "channels_last"
+            data_format=None,
+            # fraction of images reserved for validation (strictly between 0 and 1)
+            validation_split=0.0)
 
-		# Fit the model on the batches generated by datagen.flow().
-		model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
-							validation_data=(x_test, y_test),
-							epochs=epochs, verbose=1, workers=4, steps_per_epoch=x_train.shape[0]//batch_size,
-							callbacks=callbacks, use_multiprocessing=True)
+        # Compute quantities required for featurewise normalization
+        # (std, mean, and principal components if ZCA whitening is applied).
+        datagen.fit(x_train)
 
-	# Score trained model.
-	scores = model.evaluate(x_test, y_test, verbose=1)
-	print('Test loss:', scores[0])
-	print('Test accuracy:', scores[1])
+        # Fit the model on the batches generated by datagen.flow().
+        model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
+                            validation_data=(x_test, y_test),
+                            epochs=epochs, verbose=1, workers=4, steps_per_epoch=x_train.shape[0]//batch_size,
+                            callbacks=callbacks, use_multiprocessing=True)
+
+    # Score trained model.
+    scores = model.evaluate(x_test, y_test, verbose=1)
+    print('Test loss:', scores[0])
+    print('Test accuracy:', scores[1])
 
     # TODO: obtain best accuracy model and save it separately
 
     # save weights to .csv files to verify
-	for layer in model.layers:
-		if isinstance(layer, Conv2DShift) or isinstance(layer, DenseShift):
-			for index, w in enumerate(layer.get_weights()):
-				weights_csv_name = layer.name + "_" + str(index) + ".csv"
-				if len(w.shape) > 2:
-					w = np.reshape(np.transpose(w, (1,0,2,3)), (w.shape[0],-1))
-				np.savetxt(os.path.join(model_dir, weights_csv_name), w, fmt="%1.4f", delimiter=",")
+    for layer in model.layers:
+        if isinstance(layer, Conv2DShift) or isinstance(layer, DenseShift):
+            for index, w in enumerate(layer.get_weights()):
+                weights_csv_name = layer.name + "_" + str(index) + ".csv"
+                if len(w.shape) > 2:
+                    w = np.reshape(np.transpose(w, (1,0,2,3)), (w.shape[0],-1))
+                np.savetxt(os.path.join(model_dir, weights_csv_name), w, fmt="%1.4f", delimiter=",")
 
 
 def lr_schedule(epoch):
@@ -519,13 +521,15 @@ def resnet_v2(input_shape, depth, num_classes=10, shift_depth=0):
     return model
 
 if __name__== "__main__":
-	parser = argparse.ArgumentParser(description='Train various versions of ResNet on CIFAR10 data.')
-	
-	parser.add_argument('--n', type=int, default=3, help='Model parameter (default: 3)')
-	parser.add_argument('--version', type=int, default=1, help='Model version (default: 1)')
-	parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
-	parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
+    parser = argparse.ArgumentParser(description='Train various versions of ResNet on CIFAR10 data.')
+    
+    parser.add_argument('--n', type=int, default=3, help='Model parameter (default: 3)')
+    parser.add_argument('--version', type=int, default=1, help='Model version (default: 1)')
+    parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
+    parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
+    parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train (default: 500)')
+    parser.add_argument('--desc', default="", help="description to append to model directory")
 
-	args = parser.parse_args()
-	
-	cifar10_resnet(args.n, args.version, args.loss, args.shift_depth)
+    args = parser.parse_args()
+    
+    cifar10_resnet(args.n, args.version, args.loss, args.shift_depth, args.epochs, args.desc)

@@ -53,7 +53,7 @@ def imagenet_generator(dataset, batch_size=32, num_classes=1000, is_training=Fal
             if (count%batch_size == 0):
                 yield images, labels
 
-def imagenet_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=20):
+def imagenet_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=20, desc=""):
     tf.enable_eager_execution()
 
     # Training parameters
@@ -108,7 +108,10 @@ def imagenet_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth
     model.summary()
 
     # Prepare model model saving directory.
-    model_name = 'imagenet_%s_model_shift_%s' % (model_type,shift_depth)
+    if desc is not None and len(desc) > 0:
+        model_name = 'imagenet/%s/%s_shift_%s' % (model_type,desc,shift_depth)
+    else:
+        model_name = 'imagenet/%s/shift_%s' % (model_type,shift_depth)
     model_dir = os.path.join(os.path.join(os.getcwd(), 'saved_models'), model_name)
     model_checkpoint_name = 'model' + '.{epoch:03d}.h5'
     if not os.path.isdir(model_dir):
@@ -166,7 +169,8 @@ if __name__== "__main__":
     parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
     parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
     parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 20)')
+    parser.add_argument('--desc', default="", help="description to append to model directory")
 
     args = parser.parse_args()
     
-    imagenet_mobilenet(args.version, args.loss, args.shift_depth, args.epochs)
+    imagenet_mobilenet(args.version, args.loss, args.shift_depth, args.epochs, args.desc)

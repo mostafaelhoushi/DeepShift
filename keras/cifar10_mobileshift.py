@@ -65,9 +65,9 @@ def cifar10_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=
 
     # Prepare model model saving directory.
     if desc is not None and len(desc) > 0:
-        model_name = 'cifar10_%s_model_%s_shift_%s' % (model_type,desc,shift_depth)
+        model_name = 'cifar10/%s/%s_shift_%s' % (model_type,desc,shift_depth)
     else:
-        model_name = 'cifar10_%s_model_shift_%s' % (model_type,shift_depth)
+        model_name = 'cifar10/%s/shift_%s' % (model_type,shift_depth)
     model_dir = os.path.join(os.path.join(os.getcwd(), 'saved_models'), model_name)
     model_checkpoint_name = 'model' + '.{epoch:03d}.h5'
     if not os.path.isdir(model_dir):
