@@ -6,7 +6,7 @@ from shift_layer import DenseShift
 from convolutional_shift import Conv2DShift, DepthwiseConv2DShift
 from shift_utils import * 
 
-def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weights=False):
+def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weights=False, freeze=False):
     # create input layer for new model
     input_shape = model.input.shape[1:] # first shape element is batch size so don't copy it
     inputs = tf.keras.Input(shape=input_shape)
@@ -86,6 +86,8 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weight
                 
             else:
                 x = layer(x)
+                if freeze:
+                    layer.trainable = False
 
         elif type(layer) == DepthwiseConv2D:
             num_layer_kept += 1
@@ -119,12 +121,22 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weight
                     depthwise_conv2d_shift_layer.set_weights(new_weights)
             else:
                 x = layer(x)
+                if freeze:
+                    layer.trainable = False
 
         else:
             x = layer(x)
+            if num_layer_kept <= num_layer_keep: 
+                if freeze:
+                    layer.trainable = False
     outputs = x
 
     model_converted = Model(inputs=inputs, outputs=outputs)
+
+    #TO REMOVE:
+    #for l in model_converted.layers:
+    #    l.trainable = False
+
     #TODO: Copy other attributes such as learning rate, optimizer, etc.
     return model_converted
 
