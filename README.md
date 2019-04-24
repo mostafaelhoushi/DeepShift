@@ -10,7 +10,7 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 | Model | Dataset | Original Version | DeepShift Version | 
 |-------| ------- | -------------------------- | ----------------------------- |
 | ResNet20 | CIFAR10 | 92.16% | 53.06%<del>77.02%<del> |
-| ResNet32 | CIFAR10 | 92.46% | <del>85.54%<del> |
+| ResNet32 | CIFAR10 | 92.46% | 58.21%<del>85.54%<del> |
 | ResNet44 | CIFAR10 | 92.50% | 61.02%<del>85.34%<del> |
 | ResNet50 | CIFAR10 | N/A | 61.97% <del>86.23%<del> |
 | ResNet56 | CIFAR10 | 92.71% |  63.19% <del>86.30%<del> |
