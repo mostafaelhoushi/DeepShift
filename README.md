@@ -9,13 +9,13 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 
 | Model | Dataset | Reported Original Version | DeepShift Version | 
 |-------| ------- | -------------------------- | ----------------------------- |
+| MobileNet | CIFAR10 | 78.05% | 57.37% |
 | ResNet20 | CIFAR10 | 92.16% | 53.06% |
 | ResNet32 | CIFAR10 | 92.46% | 58.21% |
 | ResNet44 | CIFAR10 | 92.50% | 61.02% |
 | ResNet50 | CIFAR10 | N/A | 61.97%  |
 | ResNet56 | CIFAR10 | 92.71% |  63.19% |
 | ResNet110 | CIFAR10 | 92.65% | 67.86% |
-| MobileNet | CIFAR10 | 78.05% | 57.37% |
 
 
 #### Converting Some Layers
@@ -49,17 +49,35 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | --------------- | ----------------- | -------------------- | ---------------------- | ----------------- | ------------------- |
 | 16 | 13 | **0** | **0** | 99.7% | **78.05%** |
 | 13 | 13 | **3** | **0** | 99.7% | **79.11%** |
-| 13 | 12 | **3** | **1** | 99.8% | **78.34%** |
-| 11 | 10 | **5** | **3** | 99.8% | **79.03%** |
 | 10 | 13 | **6** | **0** | 99.7% | **78.15%** |
-| 9 | 8 | **7** | **5** | 99.6% | **77.19%** |
 | 7 | 13 | **9** | **0** | 99.4% | **76.69%** |
-| 7 | 6 | **9** | **7** | 99.4% | **75.11%** |
-| 5 | 4 | **11** | **9** | 93.3% | **70.60%** |
 | 4 | 13 | **12** | **0** | 92.5% | **73.23%** |
-| 2 | 2 | **14** | **11** | 75.9% | **67.04%** |
 | 0 | 13 | **16** | **0** | 92.5% | **70.34%** |
 | 0 | 0 | **16** | **13** | 63.5% | **57.37%** |
+| | | | | | |
+| 13 | 12 | **3** | **1** | 99.8% | **78.34%** |
+| 11 | 10 | **5** | **3** | 99.8% | **79.03%** |
+| 9 | 8 | **7** | **5** | 99.6% | **77.19%** |
+| 7 | 6 | **9** | **7** | 99.4% | **75.11%** |
+| 5 | 4 | **11** | **9** | 93.3% | **70.60%** |
+| 2 | 2 | **14** | **11** | 75.9% | **67.04%** |
+
+**MobileNet on Imagenet**:
+
+The results below have been based on Keras' model pre-trained on Imagenet. When converting a convolution layer or fully connected layer to a shifted layer, the following conversion is made to get the shifts that are closest in equivalent to the original weights: 
+```
+[kernel, bias] = original_layer.get_weights()
+shift = log2(round(abs(kernel)))
+sign = sign(kernel)
+sign[sign==1] = 0
+sign[sign==-1] = 1
+shift_layer.set_weights([shift, sign, bias])
+```
+and then the model is re-trained for a small number of epochs.
+
+| # Conv2D Layers | # DWConv2D Layers | **# Conv2DShift Layers** | **# DWConv2DShift Layers** | Epochs Retrained | Training Accuracy | **Validation Accuracy** |
+| 16 | 13 | **0** | **0** | 0 | TBA | TBA |
+| 14 | 12 | **2** | **1** | 12 | 73.7% | **60.69%** |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
