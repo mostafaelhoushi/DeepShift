@@ -9,11 +9,11 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 
 | Model | Dataset | Original Version | DeepShift Version | 
 |-------| ------- | -------------------------- | ----------------------------- |
-| ResNet20 | CIFAR10 | 92.16% | 53.06%<del>77.02%<del> |
-| ResNet32 | CIFAR10 | 92.46% | 58.21%<del>85.54%<del> |
-| ResNet44 | CIFAR10 | 92.50% | 61.02%<del>85.34%<del> |
-| ResNet50 | CIFAR10 | N/A | 61.97% <del>86.23%<del> |
-| ResNet56 | CIFAR10 | 92.71% |  63.19% <del>86.30%<del> |
+| ResNet20 | CIFAR10 | 92.16% | 53.06% |
+| ResNet32 | CIFAR10 | 92.46% | 58.21% |
+| ResNet44 | CIFAR10 | 92.50% | 61.02% |
+| ResNet50 | CIFAR10 | N/A | 61.97%  |
+| ResNet56 | CIFAR10 | 92.71% |  63.19% |
 | ResNet110 | CIFAR10 | 92.65% | 67.86% |
 | MobileNet | CIFAR10 | 78.05% | 57.37% |
 
@@ -26,11 +26,11 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | # Conv2D Layers | **# Conv2DShift Layers** | **Validation Accuracy** |
 | --------------- | -------------------- | ------------------- |
 | 51 | 0 | 91.93% |
-| 39 | 12 | 92.090% <del>92.14%<del> |
-| 29 | 22 | 87.02% <del>91.65%<del> |
-| 19 | 32 | 82.81% <del>88.83%<del> |
-| 9 | 42 | 78.42% <del>88.12%<del> |
-| 0 | 51 | 61.97% <del>86.23%<del> |
+| 39 | 12 | 92.09% |
+| 29 | 22 | 87.02% |
+| 19 | 32 | 82.81% |
+| 9 | 42 | 78.42% |
+| 0 | 51 | 61.97% |
 
 **MobileNet on CIFAR10**:
 
