@@ -4,8 +4,9 @@ from tensorflow.keras.models import Model
 
 from shift_layer import DenseShift
 from convolutional_shift import Conv2DShift, DepthwiseConv2DShift
+from shift_utils import * 
 
-def convert_to_shift(model, num_layers = -1, num_to_replace=None):
+def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weights=False):
     # create input layer for new model
     input_shape = model.input.shape[1:] # first shape element is batch size so don't copy it
     inputs = tf.keras.Input(shape=input_shape)
@@ -35,6 +36,20 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None):
 
             x = dense_shift_layer(x)
 
+            if (convert_weights is True):
+                [kernel, bias] = weights
+
+                shift, sign = get_shift_and_sign(kernel)
+                # convert sign to (-1)^sign
+                # i.e., 1 -> 0, -1 -> 1
+                sign = sign.numpy()
+                sign[sign == 1] = 0
+                sign[sign == -1] = 1
+                
+                new_weights = [shift, sign, bias]
+
+                dense_shift_layer.set_weights(new_weights)
+
         elif type(layer) == Conv2D:
             num_layer_kept += 1
             if num_layer_kept > num_layer_keep: 
@@ -48,6 +63,27 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None):
                 conv2d_shift_layer = Conv2DShift(filters=channels_out, kernel_size = (filter_height, filter_width)) 
 
                 x = conv2d_shift_layer(x)
+
+                if (convert_weights is True):
+                    if layer.use_bias:
+                        [kernel, bias] = layer.get_weights()
+                    else:
+                        [kernel] = layer.get_weights()
+                        bias = np.zeros(shape=(channels_out,))
+
+                    #TODO: if attributes copied, then need to check has_bias also on conv2d_shift_layer
+
+                    shift, sign = get_shift_and_sign(kernel)
+                    # convert sign to (-1)^sign
+                    # i.e., 1 -> 0, -1 -> 1
+                    sign = sign.numpy()
+                    sign[sign == 1] = 0
+                    sign[sign == -1] = 1
+
+                    new_weights = [shift, bias, sign]
+
+                    conv2d_shift_layer.set_weights(new_weights)
+                
             else:
                 x = layer(x)
 
@@ -58,14 +94,31 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None):
                 output = layer.output
                 weights = layer.weights
 
-                # weights of DepthwiseConv2D has shape: (filter_height, filter_width, channels_in, channels_multiplier)
-                filter_height, filter_width, _, channels_multiplier = weights[0].shape.as_list()
-                #depthwise_conv2d_shift_layer = DepthwiseConv2DShift(kernel_size = (filter_height, filter_width), depth_multiplier=channels_multiplier) 
                 config = layer.get_config()
                 config.pop("name")
                 depthwise_conv2d_shift_layer = DepthwiseConv2DShift.from_config(config)
 
                 x = depthwise_conv2d_shift_layer(x)
+
+                if (convert_weights is True):
+                    if layer.use_bias:
+                        [kernel, bias] = layer.get_weights()
+                    else:
+                        [kernel] = layer.get_weights()
+                        bias = np.zeros(shape=(channels_out,))
+
+                    #TODO: if attributes copied, then need to check has_bias also on conv2d_shift_layer
+
+                    shift, sign = get_shift_and_sign(kernel)
+                    # convert sign to (-1)^sign
+                    # i.e., 1 -> 0, -1 -> 1
+                    sign = sign.numpy()
+                    sign[sign == 1] = 0
+                    sign[sign == -1] = 1
+                    
+                    new_weights = [shift, bias, sign]
+                    
+                    depthwise_conv2d_shift_layer.set_weights(new_weights)
             else:
                 x = layer(x)
 

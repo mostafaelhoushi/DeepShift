@@ -10,6 +10,7 @@ from tensorflow.keras.utils import to_categorical
 from enum import Enum
 
 from cifar10_resshift import *
+from convert_to_shift import *
 
 class ModelPreprocessor(Enum):
     RESNET = 1
