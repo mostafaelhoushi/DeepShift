@@ -29,6 +29,7 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | 18 | 3 | 90.9% | 88.56% |
 | 17 | 4 | 90.6% | 88.05% |
 | 13 | 8 | 88.0% | 84.62% |
+| 9 | 12 | 82.7% | 80.51% |
 | 0 | 21 |  | 53.06% |
 
 
