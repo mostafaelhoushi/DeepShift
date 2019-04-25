@@ -7,7 +7,7 @@ This is a project that aims to replace multiplications in a neural networks with
 #### Converting all Layers
 Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `DenseShift`:
 
-| Model | Dataset | Original Version | DeepShift Version | 
+| Model | Dataset | Reported Original Version | DeepShift Version | 
 |-------| ------- | -------------------------- | ----------------------------- |
 | ResNet20 | CIFAR10 | 92.16% | 53.06% |
 | ResNet32 | CIFAR10 | 92.46% | 58.21% |
@@ -23,14 +23,23 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 
 **ResNet50 on CIFAR10**:
 
-| # Conv2D Layers | **# Conv2DShift Layers** | **Validation Accuracy** |
-| --------------- | -------------------- | ------------------- |
-| 51 | 0 | 91.93% |
-| 39 | 12 | 92.09% |
-| 29 | 22 | 87.02% |
-| 19 | 32 | 82.81% |
-| 9 | 42 | 78.42% |
-| 0 | 51 | 61.97% |
+| # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
+| --------------- | -------------------- | --------------------- | ------------------- |
+| 21 | 0 |  |  |
+| 18 | 3| 90.9% | 88.56% |
+| 0 | 21 |  | 53.06% |
+
+
+**ResNet50 on CIFAR10**:
+
+| # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
+| --------------- | -------------------- | --------------------- | ------------------- |
+| 51 | 0 |  | 91.93% |
+| 39 | 12 |  | 92.09% |
+| 29 | 22 |  | 87.02% |
+| 19 | 32 |  | 82.81% |
+| 9 | 42 |  | 78.42% |
+| 0 | 51 |  | 61.97% |
 
 **MobileNet on CIFAR10**:
 
