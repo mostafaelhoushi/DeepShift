@@ -88,8 +88,10 @@ shift_layer.set_weights([shift, sign, bias])
 and then the model is re-trained for a small number of epochs.
 
 | # Conv2D Layers | # DWConv2D Layers | **# Conv2DShift Layers** | **# DWConv2DShift Layers** | Epochs Retrained | Training Accuracy | **Validation Accuracy** |
+| --------------- | ----------------- | ------------------------ | -------------------------- | ---------------- | ----------------- | ----------------------- |
 | 16 | 13 | **0** | **0** | 0 | 74.9% | **61.87%** |
 | 14 | 12 | **2** | **1** | 12 | 73.7% | **60.69%** |
+| 12 | 11 | **4** | **2** | 24 | 73.4% | **59.03%** |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
