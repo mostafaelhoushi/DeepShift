@@ -21,7 +21,7 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 #### Converting Some Layers
 Converting only the last `N_shift` convolution layers (as well as the last fully connected layer) to shift layers.
 
-**ResNet50 on CIFAR10**:
+**ResNet20 on CIFAR10**:
 
 | # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
 | --------------- | -------------------- | --------------------- | ------------------- |
@@ -30,6 +30,15 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | 17 | 4 | 90.6% | 88.05% |
 | 13 | 8 | 88.0% | 84.62% |
 | 0 | 21 |  | 53.06% |
+
+
+**ResNet32 on CIFAR10**:
+
+| # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
+| --------------- | -------------------- | --------------------- | ------------------- |
+| 33 | 0 |  |  |
+| 27 | 6 | 91.8% | 89.47% |
+
 
 
 **ResNet50 on CIFAR10**:
