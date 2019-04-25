@@ -26,7 +26,8 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
 | --------------- | -------------------- | --------------------- | ------------------- |
 | 21 | 0 |  |  |
-| 18 | 3| 90.9% | 88.56% |
+| 18 | 3 | 90.9% | 88.56% |
+| 17 | 4 | 90.6% | 88.05% |
 | 0 | 21 |  | 53.06% |
 
 
