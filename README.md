@@ -30,7 +30,7 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | 17 | 4 | 90.6% | 88.05% |
 | 13 | 8 | 88.0% | 84.62% |
 | 9 | 12 | 82.7% | 80.51% |
-| 0 | 21 |  | 53.06% |
+| 0 | 21 | 51.3%  | 53.06% |
 
 
 **ResNet32 on CIFAR10**:
@@ -47,11 +47,12 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
 | --------------- | -------------------- | --------------------- | ------------------- |
 | 51 | 0 |  | 91.93% |
-| 39 | 12 |  | 92.09% |
-| 29 | 22 |  | 87.02% |
-| 19 | 32 |  | 82.81% |
-| 9 | 42 |  | 78.42% |
-| 0 | 51 |  | 61.97% |
+| 39 | 12 | 98.3%  | 92.09% |
+| 29 | 22 | 90.9% | 87.02% |
+| 19 | 32 | 85.4% | 82.81% |
+| 9 | 42 | 79.5%  | 78.42% |
+| 0 | 51 | 59.0%  | 61.97% |
+
 
 **MobileNet on CIFAR10**:
 
@@ -71,6 +72,7 @@ Converting only the last `N_shift` convolution layers (as well as the last fully
 | 7 | 6 | **9** | **7** | 99.4% | **75.11%** |
 | 5 | 4 | **11** | **9** | 93.3% | **70.60%** |
 | 2 | 2 | **14** | **11** | 75.9% | **67.04%** |
+
 
 **MobileNet on Imagenet**:
 
