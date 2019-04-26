@@ -8,6 +8,7 @@ from tensorflow.keras.applications import MobileNet, MobileNetV2
 from tensorflow.keras.utils import to_categorical
 
 from enum import Enum
+import distutils
 
 from cifar10_resshift import *
 from convert_to_shift import *
@@ -54,8 +55,6 @@ def imagenet_generator(dataset, batch_size=32, num_classes=1000, is_training=Fal
                 yield images, labels
 
 def imagenet_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=20, desc="", freeze=True):
-=======
-def imagenet_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth=0, epochs=20, freeze=True):
     tf.enable_eager_execution()
 
     # Training parameters
@@ -102,8 +101,6 @@ def imagenet_mobilenet(version = 1, loss='categorical_crossentropy', shift_depth
     # Convert layers to shift
     if shift_depth > 0:
         model = convert_to_shift(model, num_to_replace=shift_depth, convert_weights=True, freeze=freeze)
-
-    model.trainable = False
 
     model.compile(loss='categorical_crossentropy',
                 optimizer=tf.train.AdamOptimizer(),
@@ -174,7 +171,7 @@ if __name__== "__main__":
     parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
     parser.add_argument('--epochs', type=int, default=20, help='number of epochs to train (default: 20)')
     parser.add_argument('--desc', default="", help="description to append to model directory")
-    parser.add_argument('--freeze', type=bool, default=True, help='freeze weights of all layers upto the first converted layer (default: True)')
+    parser.add_argument('--freeze', default=True, type=lambda x:bool(distutils.util.strtobool(x)), help='freeze weights of all layers upto the first converted layer (default: True)')
 
     args = parser.parse_args()
     

@@ -133,9 +133,6 @@ def convert_to_shift(model, num_layers = -1, num_to_replace=None, convert_weight
 
     model_converted = Model(inputs=inputs, outputs=outputs)
 
-    #TO REMOVE:
-    #for l in model_converted.layers:
-    #    l.trainable = False
 
     #TODO: Copy other attributes such as learning rate, optimizer, etc.
     return model_converted
