@@ -46,6 +46,7 @@ import argparse
 
 from shift_layer import *
 from convolutional_shift import *
+from callbacks_modified import ReduceLROnPlateauMODIFIED, LearningRateSchedulerMODIFIED
 
 tf.enable_eager_execution()
 
@@ -117,7 +118,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
         model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 
     model.compile(loss=loss,
-                  optimizer=tf.train.AdamOptimizer(learning_rate=lr_schedule(0)),
+                  optimizer=tf.train.AdamOptimizer(learning_rate=lr_schedule(0)), # tf.keras.optimizers.Adam(),
                   metrics=['accuracy'])
     model.summary()
     print(model_type)
@@ -145,20 +146,18 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
                                  save_best_only=True)
 
     # TODO: fix lr_reducer and lr_scheduler for eager mode
-    lr_scheduler = LearningRateScheduler(lr_schedule)
+    lr_scheduler = LearningRateSchedulerMODIFIED(lr_schedule)
 
-    '''
     # Not compatible with eager execution
-    lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
-                                   cooldown=0,
-                                   patience=5,
-                                   min_lr=0.5e-6)
-    '''
+    lr_reducer = ReduceLROnPlateauMODIFIED(factor=np.sqrt(0.1),
+                                           cooldown=0,
+                                           patience=5,
+                                           min_lr=0.5e-6)
                                    
     csv_logger = CSVLogger(os.path.join(model_dir,"model"+ "_train_log.csv"))
 
-    # callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
-    callbacks = [checkpoint, csv_logger]
+    callbacks = [checkpoint, lr_reducer, lr_scheduler, csv_logger]
+    #callbacks = [checkpoint, csv_logger]
 
     # Run training, with or without data augmentation.
     if not data_augmentation:
