@@ -526,7 +526,7 @@ if __name__== "__main__":
     parser.add_argument('--version', type=int, default=1, help='Model version (default: 1)')
     parser.add_argument('--loss', default="categorical_crossentropy", help='loss (default: ''categorical_crossentropy'')')
     parser.add_argument('--shift_depth', type=int, default=0, help='number of shift conv layers from the end (default: 0)')
-    parser.add_argument('--epochs', type=int, default=500, help='number of epochs to train (default: 500)')
+    parser.add_argument('--epochs', type=int, default=200, help='number of epochs to train (default: 200)')
     parser.add_argument('--desc', default="", help="description to append to model directory")
 
     args = parser.parse_args()
