@@ -296,7 +296,7 @@ def resnet_layer(inputs,
                         kernel_size=kernel_size,
                         strides=strides,
                         padding='same',
-                        kernel_regularizer=None) #l2_powerof2(1e-4)) #TODO: fix regularizer in eager mode
+                        kernel_regularizer=l2_powerof2(1e-4)) #TODO: fix regularizer in eager mode
 
     x = inputs
     if conv_first:
