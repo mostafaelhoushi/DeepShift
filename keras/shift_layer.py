@@ -1,15 +1,15 @@
-from tensorflow.python.keras import backend as K
-from tensorflow.python.keras.layers import Layer
+from keras import backend as K
+from keras.layers import Layer
 import tensorflow as tf
 import numpy as np
 import math
 import sys
 sys.path.insert(0, '../spfpm/')
 from FixedPoint import FXfamily, FXnum
-import tensorflow.python.keras.constraints
-from tensorflow.python.keras.initializers import RandomUniform
-from tensorflow.python.keras.constraints import Constraint
-from tensorflow.python.keras.regularizers import L1L2
+import keras.constraints
+from keras.initializers import RandomUniform
+from keras.constraints import Constraint
+from keras.regularizers import L1L2
 
 from tensorflow.python.framework import tensor_shape
 import time
@@ -44,8 +44,8 @@ class RoundedRandomUniform(RandomUniform):
     def __init__(self, minval=-10, maxval=-1, seed=None):
         super(RoundedRandomUniform, self).__init__(minval, maxval, seed)
 
-    def __call__(self, shape, dtype=None, partition_info=None):
-        return K.round(super(RoundedRandomUniform, self).__call__(shape, dtype, partition_info))
+    def __call__(self, shape, dtype=None):
+        return K.round(super(RoundedRandomUniform, self).__call__(shape, dtype))
 
 class L1L2_PowerOf2(L1L2):
     """Regularizer for L1 and L2 regularization for shift weights.
@@ -56,7 +56,7 @@ class L1L2_PowerOf2(L1L2):
     def __call__(self, x):
         twos = K.ones(shape=x.shape)*2
         twos_power_of_x = K.pow(twos, x)
-        regularization = 0.
+        regularization = 0
         if self.l1:
             regularization += K.sum(self.l1 * K.abs(twos_power_of_x))
         if self.l2:
@@ -95,7 +95,7 @@ class DenseShift(Layer):
                                       initializer=RoundedRandomUniform(0,1),
                                       trainable=True)
         self.bias = self.add_weight(name='bias',
-                                      shape=(self.output_dim,),
+                                      shape=(1, self.output_dim,),
                                       initializer='uniform',
                                       trainable=True)
 
@@ -183,11 +183,5 @@ class DenseShift(Layer):
 
 
     def compute_output_shape(self, input_shape):
-        input_shape = tensor_shape.TensorShape(input_shape)
-        input_shape = input_shape.with_rank_at_least(2)
-        if tensor_shape.dimension_value(input_shape[-1]) is None:
-            raise ValueError(
-                'The innermost dimension of input_shape must be defined, but saw: %s'
-                % input_shape)
-        return input_shape[:-1].concatenate(self.output_dim)
+        return (input_shape[0], self.output_dim)
 

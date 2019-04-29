@@ -29,17 +29,17 @@ ResNet1001 v2|111|     - %|            95.08+-.14 %|  -
 
 from __future__ import print_function
 import tensorflow as tf
-import tensorflow.keras
-from tensorflow.keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from tensorflow.keras.layers import AveragePooling2D, Input, Flatten, DepthwiseConv2D
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler, CSVLogger
-from tensorflow.keras.callbacks import ReduceLROnPlateau
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.regularizers import l2
-from tensorflow.keras import backend as K
-from tensorflow.keras.models import Model
-from tensorflow.keras.datasets import cifar10
+import keras
+from keras.layers import Dense, Conv2D, BatchNormalization, Activation
+from keras.layers import AveragePooling2D, Input, Flatten, DepthwiseConv2D
+from keras.optimizers import Adam
+from keras.callbacks import ModelCheckpoint, LearningRateScheduler, CSVLogger
+from keras.callbacks import ReduceLROnPlateau
+from keras.preprocessing.image import ImageDataGenerator
+from keras.regularizers import l2
+from keras import backend as K
+from keras.models import Model
+from keras.datasets import cifar10
 import numpy as np
 import os
 import argparse
@@ -47,8 +47,6 @@ import argparse
 from shift_layer import *
 from convolutional_shift import *
 from callbacks_modified import ReduceLROnPlateauMODIFIED, LearningRateSchedulerMODIFIED
-
-tf.enable_eager_execution()
 
 # Script Arguments: n, version
 # n: Model parameter
@@ -109,8 +107,8 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
     print('y_train shape:', y_train.shape)
 
     # Convert class vectors to binary class matrices.
-    y_train = tf.keras.utils.to_categorical(y_train, num_classes)
-    y_test = tf.keras.utils.to_categorical(y_test, num_classes)
+    y_train = keras.utils.to_categorical(y_train, num_classes)
+    y_test = keras.utils.to_categorical(y_test, num_classes)
 
     if version == 2:
         model = resnet_v2(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
@@ -118,7 +116,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
         model = resnet_v1(input_shape=input_shape, depth=depth, shift_depth=shift_depth)
 
     model.compile(loss=loss,
-                  optimizer=tf.train.AdamOptimizer(learning_rate=lr_schedule(0)), # tf.keras.optimizers.Adam(),
+                  optimizer= keras.optimizers.Adam(),
                   metrics=['accuracy'])
     model.summary()
     print(model_type)
@@ -146,10 +144,10 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
                                  save_best_only=True)
 
     # TODO: fix lr_reducer and lr_scheduler for eager mode
-    lr_scheduler = LearningRateSchedulerMODIFIED(lr_schedule)
+    lr_scheduler = LearningRateScheduler(lr_schedule)
 
     # Not compatible with eager execution
-    lr_reducer = ReduceLROnPlateauMODIFIED(factor=np.sqrt(0.1),
+    lr_reducer = ReduceLROnPlateau(factor=np.sqrt(0.1),
                                            cooldown=0,
                                            patience=5,
                                            min_lr=0.5e-6)
@@ -221,7 +219,7 @@ def cifar10_resnet(n = 3, version = 1, loss='categorical_crossentropy', shift_de
         model.fit_generator(datagen.flow(x_train, y_train, batch_size=batch_size),
                             validation_data=(x_test, y_test),
                             epochs=epochs, verbose=1, workers=4, steps_per_epoch=x_train.shape[0]//batch_size,
-                            callbacks=callbacks, use_multiprocessing=True)
+                            callbacks=callbacks) # , use_multiprocessing=True)
 
     # Score trained model.
     scores = model.evaluate(x_test, y_test, verbose=1)
@@ -388,7 +386,7 @@ def resnet_v1(input_shape, depth, num_classes=10, shift_depth=0):
                                  use_shift=use_shift)
                 conv_so_far += 1
 
-            x = tf.keras.layers.add([x, y])
+            x = keras.layers.add([x, y])
             x = Activation('relu')(x)
         num_filters *= 2
 
