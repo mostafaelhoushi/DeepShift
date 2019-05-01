@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Function
 
+import math
+
 # Inherit from Function
 class LinearShiftFunction(Function):
 
@@ -10,7 +12,7 @@ class LinearShiftFunction(Function):
     # bias is an optional argument
     def forward(ctx, input, weight, bias=None):
         ctx.save_for_backward(input, weight, bias)
-        output = input.mm(weight.t())
+        output = input.mm(2**weight.t())
         if bias is not None:
             output += bias.unsqueeze(0).expand_as(output)
         return output
@@ -31,7 +33,7 @@ class LinearShiftFunction(Function):
         # skip them. Returning gradients for inputs that don't require it is
         # not an error.
         if ctx.needs_input_grad[0]:
-            grad_input = grad_output.mm(weight)
+            grad_input = math.log(2) * grad_output.mm(2**weight)
         if ctx.needs_input_grad[1]:
             grad_weight = grad_output.t().mm(input)
         if bias is not None and ctx.needs_input_grad[2]:
