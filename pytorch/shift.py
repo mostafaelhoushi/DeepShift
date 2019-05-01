@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Function
 
 # Inherit from Function
-class LinearFunction2(Function):
+class LinearShiftFunction(Function):
 
     # Note that both forward and backward are @staticmethods
     @staticmethod
@@ -39,11 +39,11 @@ class LinearFunction2(Function):
 
         return grad_input, grad_weight, grad_bias
 
-linear2 = LinearFunction2.apply
+linear_shift = LinearShiftFunction.apply
 
-class Linear2(nn.Module):
+class LinearShift(nn.Module):
     def __init__(self, input_features, output_features, bias=True):
-        super(Linear2, self).__init__()
+        super(LinearShift, self).__init__()
         self.input_features = input_features
         self.output_features = output_features
 
@@ -69,7 +69,7 @@ class Linear2(nn.Module):
 
     def forward(self, input):
         # See the autograd section for explanation of what happens here.
-        return LinearFunction2.apply(input, self.weight, self.bias)
+        return LinearShiftFunction.apply(input, self.weight, self.bias)
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
