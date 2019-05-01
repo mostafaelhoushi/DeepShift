@@ -2,10 +2,10 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
 import cv2 as cv
-from tensorflow.keras.preprocessing import image
-from tensorflow.keras.applications import mobilenet, resnet50
-from tensorflow.keras.applications import MobileNet, MobileNetV2
-from tensorflow.keras.utils import to_categorical
+from keras.preprocessing import image
+from keras.applications import mobilenet, resnet50
+from keras.applications import MobileNet, MobileNetV2
+from keras.utils import to_categorical
 
 from enum import Enum
 import distutils
