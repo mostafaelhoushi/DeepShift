@@ -6,14 +6,15 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 
+from linear import *
 
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 20, 5, 1)
         self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(4*4*50, 500)
-        self.fc2 = nn.Linear(500, 10)
+        self.fc1 = Linear2(4*4*50, 500)
+        self.fc2 = Linear2(500, 10)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
