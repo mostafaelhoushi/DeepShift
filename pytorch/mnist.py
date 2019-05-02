@@ -11,7 +11,7 @@ import shift
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(1*28*28, 512) # shift.LinearShift(1*28*28, 512) 
+        self.fc1 = nn.Linear(1*28*28, 512)  
         self.dropout1 = nn.Dropout(0.2)
         self.fc2 = shift.LinearShift(512, 512)
         self.dropout2 = nn.Dropout(0.2)
