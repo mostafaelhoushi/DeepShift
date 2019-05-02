@@ -8,9 +8,9 @@ from torchvision import datasets, transforms
 
 import shift
 
-class Net(nn.Module):
+class LinearMNIST(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(LinearMNIST, self).__init__()
         self.fc1 = nn.Linear(1*28*28, 512)  
         self.dropout1 = nn.Dropout(0.2)
         self.fc2 = shift.LinearShift(512, 512)
@@ -25,7 +25,25 @@ class Net(nn.Module):
         x = self.dropout2(x)
         x = self.fc3(x)
         return F.log_softmax(x, dim=1)
-    
+
+class ConvMNIST(nn.Module):
+    def __init__(self):
+        super(ConvMNIST, self).__init__()
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.conv2 = shift.Conv2dShift(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4*4*50, 500)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4*4*50)
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+
 def train(args, model, device, train_loader, loss_fn, optimizer, epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -94,20 +112,20 @@ def main():
         datasets.MNIST('../data', train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
-                           transforms.Normalize((0,), (255,))
+                           transforms.Normalize((0.1307,), (0.3081,)) # transforms.Normalize((0,), (255,))
                        ])),
         batch_size=args.batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, transform=transforms.Compose([
                            transforms.ToTensor(),
-                           transforms.Normalize((0,), (255,))
+                           transforms.Normalize((0.1307,), (0.3081,)) # transforms.Normalize((0,), (255,))
                        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 
-    model = Net().to(device)
-    loss_fn = F.cross_entropy
-    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum)
+    model = ConvMNIST().to(device)
+    loss_fn = F.cross_entropy # F.nll_loss
+    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) # optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, loss_fn, optimizer, epoch)
