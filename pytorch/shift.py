@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 
 import math
+import numpy as np
 
 '''
 # Inherit from Function
@@ -62,7 +63,8 @@ class LinearShift(nn.Module):
             tensor_constructor = torch.DoubleTensor # double precision required to check grad
         else:
             tensor_constructor = torch.Tensor # In PyTorch torch.Tensor is alias torch.FloatTensor
-        self.weight = nn.Parameter(tensor_constructor(output_features, input_features))
+        self.shift = nn.Parameter(tensor_constructor(output_features, input_features))
+        self.sign = nn.Parameter(tensor_constructor(output_features, input_features))
         if bias:
             self.bias = nn.Parameter(tensor_constructor(output_features))
         else:
@@ -71,20 +73,25 @@ class LinearShift(nn.Module):
             self.register_parameter('bias', None)
 
         # Not a very smart way to initialize weights
-        self.weight.data.uniform_(-0.1, 0.1)
+        self.shift.data.uniform_(-10, -1) # (-0.1, 0.1)
+        self.sign.data.uniform_(-1, 0) # (-0.1, 0.1)
         if bias is not None:
             self.bias.data.uniform_(-0.1, 0.1)
 
     def forward(self, input):
         # See the autograd section for explanation of what happens here.
         '''
-        return LinearShiftFunction.apply(input, self.weight, self.bias)
+        return LinearShiftFunction.apply(input, self.shift, self.bias)
         '''
-        
-        output = input.mm(self.weight.t())
+
+        '''
+        output = input.mm((2**self.shift * (-1)**self.sign).t())
         if self.bias is not None:
             output += self.bias.unsqueeze(0).expand_as(output)
         return output
+        '''
+        weight = (2 ** self.shift) * self.sign
+        return F.linear(input, weight, self.bias)
         
 
     def extra_repr(self):
