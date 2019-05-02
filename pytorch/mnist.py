@@ -78,8 +78,10 @@ def main():
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
     
-    parser.add_argument('--save-model', action='store_true', default=False,
+    parser.add_argument('--save-model', action='store_true', default=True,
                         help='For Saving the current Model')
+    parser.add_argument('--print-weights', action='store_true', default=True,
+                        help='For printing the weights of Model')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -112,7 +114,17 @@ def main():
         test(args, model, device, test_loader, loss_fn)
 
     if (args.save_model):
-        torch.save(model.state_dict(),"mnist_fc.pt")
+        torch.save(model, "mnist.pt")
+        torch.save(model.state_dict(),"mnist_fc_weights.pt")
+        torch.save(optimizer.state_dict(),"mnist_fc_opt.pt")
+
+    if (args.print_weights):
+        # Print model's state_dict
+        print("Model's state_dict:")
+        for param_tensor in model.state_dict():
+            print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+            print(model.state_dict()[param_tensor])
+            print("")
         
 if __name__ == '__main__':
     main()
