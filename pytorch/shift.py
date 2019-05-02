@@ -90,7 +90,15 @@ class LinearShift(nn.Module):
             output += self.bias.unsqueeze(0).expand_as(output)
         return output
         '''
-        weight = (2 ** self.shift.round()) * ( (-1) ** self.sign.round() )
+        if not hasattr(self.shift,'org'):
+            self.shift.org=self.shift.data.clone()
+        self.shift.data=self.shift.org.round()
+
+        if not hasattr(self.sign,'org'):
+            self.sign.org=self.sign.data.clone()
+        self.sign.data=self.sign.org.round()
+
+        weight = (2 ** self.shift) * ( (-1) ** self.sign )
         return F.linear(input, weight, self.bias)
         
 
