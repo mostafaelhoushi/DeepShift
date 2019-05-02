@@ -69,8 +69,8 @@ def main():
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
-    parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
-                        help='SGD momentum (default: 0.5)')
+    parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
+                        help='SGD momentum (default: 0.0)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -92,20 +92,20 @@ def main():
         datasets.MNIST('../data', train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
+                           transforms.Normalize((0,), (255,))
                        ])),
         batch_size=args.batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, transform=transforms.Compose([
                            transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
+                           transforms.Normalize((0,), (255,))
                        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
 
     model = Net().to(device)
-    loss_fn = F.nll_loss
-    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    loss_fn = F.cross_entropy
+    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, loss_fn, optimizer, epoch)
