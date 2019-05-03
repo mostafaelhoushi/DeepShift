@@ -5,6 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
+import csv
+import os
 
 import shift
 
@@ -58,6 +60,8 @@ def train(args, model, device, train_loader, loss_fn, optimizer, epoch):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
+    return loss.item()
+
 def test(args, model, device, test_loader, loss_fn):
     model.eval()
     test_loss = 0
@@ -75,6 +79,8 @@ def test(args, model, device, test_loader, loss_fn):
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
+
+    return test_loss, correct
 
 def main():
     # Training settings
@@ -127,14 +133,28 @@ def main():
     loss_fn = F.cross_entropy # F.nll_loss
     optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) # optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
+    train_log = []
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, loss_fn, optimizer, epoch)
-        test(args, model, device, test_loader, loss_fn)
+        train_loss = train(args, model, device, train_loader, loss_fn, optimizer, epoch)
+        test_loss, correct = test(args, model, device, test_loader, loss_fn)
+
+        train_log.append((epoch, train_loss, test_loss, correct/1e4))
+
+    model_name = "mnist"
 
     if (args.save_model):
-        torch.save(model, "mnist.pt")
-        torch.save(model.state_dict(),"mnist_fc_weights.pt")
-        torch.save(optimizer.state_dict(),"mnist_fc_opt.pt")
+        model_dir = os.path.join(os.path.join(os.getcwd(), 'models'), model_name)
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir, exist_ok=True)
+
+        torch.save(model, os.path.join(model_dir, "model.pt"))
+        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
+        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+
+        with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
+            train_log_csv = csv.writer(train_log_file)
+            train_log_csv.writerow(['epoch', 'train_loss', 'test_loss', 'test_accuracy'])
+            train_log_csv.writerows(train_log)
 
     if (args.print_weights):
         # Print model's state_dict
