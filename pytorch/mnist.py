@@ -8,6 +8,8 @@ from torchvision import datasets, transforms
 import csv
 import os
 
+from torchsummary import summary
+
 import shift
 from convert_to_shift import convert_to_shift
 
@@ -16,9 +18,9 @@ class LinearMNIST(nn.Module):
         super(LinearMNIST, self).__init__()
         self.fc1 = nn.Linear(1*28*28, 512)  
         self.dropout1 = nn.Dropout(0.2)
-        self.fc2 = shift.LinearShift(512, 512)
+        self.fc2 = nn.Linear(512, 512)
         self.dropout2 = nn.Dropout(0.2)
-        self.fc3 = shift.LinearShift(512, 10)
+        self.fc3 = nn.Linear(512, 10)
 
     def forward(self, x):
         x = x.view(-1, 1 * 28 * 28) 
@@ -146,6 +148,10 @@ def main():
 
     loss_fn = F.cross_entropy # F.nll_loss
     optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) # optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+
+    # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
+    summary(model, input_size=(1, 28, 28))
+    print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     train_log = []
     for epoch in range(1, args.epochs + 1):

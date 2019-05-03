@@ -31,6 +31,7 @@ tensorflow-gpu==1.13.1
 tensorflow-metadata==0.13.0
 termcolor==1.1.0
 torch==1.1.0
+torchsummary==1.5.1
 torchvision==0.2.2.post3
 tqdm==4.31.1
 urllib3==1.24.1
