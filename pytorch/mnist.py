@@ -150,7 +150,10 @@ def main():
         model = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear')).to(device)
 
     loss_fn = F.cross_entropy # F.nll_loss
-    optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) # optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+    if args.type == 'linear' or (args.type == 'conv' and args.shift_depth > 0):
+        optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) 
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     if args.desc is not None and len(desc) > 0:
         model_name = 'simple_%s/%s_shift_%s' % (args.type, args.desc, args.shift_depth)
