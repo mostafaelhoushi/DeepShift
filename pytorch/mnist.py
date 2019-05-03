@@ -93,7 +93,7 @@ def main():
                         help='model architecture type: ' +
                         ' | '.join(['linear', 'conv']) +
                         ' (default: linear)')
-    parser.add_argument('--shift_depth', type=int, default=1,
+    parser.add_argument('--shift_depth', type=int, default=0,
                         help='how many layers to convert to shift')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
