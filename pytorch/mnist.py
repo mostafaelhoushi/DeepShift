@@ -157,6 +157,10 @@ def main():
     else:
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
+    # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
+    summary(model, input_size=(1, 28, 28))
+    print("WARNING: The summary function is not counting properly parameters in custom layers")
+
     if (args.save_model):
         model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
         if not os.path.isdir(model_dir):
