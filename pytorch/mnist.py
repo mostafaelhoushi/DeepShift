@@ -9,6 +9,7 @@ import csv
 import os
 
 import shift
+from convert_to_shift import convert_to_shift
 
 class LinearMNIST(nn.Module):
     def __init__(self):
@@ -90,6 +91,8 @@ def main():
                         help='model architecture type: ' +
                         ' | '.join(['linear', 'conv']) +
                         ' (default: linear)')
+    parser.add_argument('--shift_depth', type=int, default=1,
+                        help='how many layers to convert to shift')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -137,6 +140,10 @@ def main():
         model = LinearMNIST().to(device)
     elif args.type == 'conv':
         model = ConvMNIST().to(device)
+
+    if args.shift_depth > 0:
+        model = convert_to_shift(model, args.shift_depth).to(device)
+
     loss_fn = F.cross_entropy # F.nll_loss
     optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) # optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
