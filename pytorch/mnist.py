@@ -116,6 +116,8 @@ def main():
                         help='For Saving the current Model (default: True)')
     parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                         help='For printing the weights of Model (default: True)')
+    parser.add_argument('--desc', type=str, default=None,
+                        help='description to append to model directory name')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -160,10 +162,13 @@ def main():
 
         train_log.append((epoch, train_loss, test_loss, correct/1e4))
 
-    model_name = "mnist"
+    if args.desc is not None and len(desc) > 0:
+        model_name = 'simple_%s/%s_shift_%s' % (args.type, args.desc, args.shift_depth)
+    else:
+        model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
     if (args.save_model):
-        model_dir = os.path.join(os.path.join(os.getcwd(), 'models'), model_name)
+        model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
         if not os.path.isdir(model_dir):
             os.makedirs(model_dir, exist_ok=True)
 
