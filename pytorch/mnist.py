@@ -7,6 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 import csv
 import os
+from contextlib import redirect_stdout
 
 from torchsummary import summary
 
@@ -151,17 +152,6 @@ def main():
     loss_fn = F.cross_entropy # F.nll_loss
     optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) # optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
-    # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-    summary(model, input_size=(1, 28, 28))
-    print("WARNING: The summary function is not counting properly parameters in custom layers")
-
-    train_log = []
-    for epoch in range(1, args.epochs + 1):
-        train_loss = train(args, model, device, train_loader, loss_fn, optimizer, epoch)
-        test_loss, correct = test(args, model, device, test_loader, loss_fn)
-
-        train_log.append((epoch, train_loss, test_loss, correct/1e4))
-
     if args.desc is not None and len(desc) > 0:
         model_name = 'simple_%s/%s_shift_%s' % (args.type, args.desc, args.shift_depth)
     else:
@@ -172,6 +162,20 @@ def main():
         if not os.path.isdir(model_dir):
             os.makedirs(model_dir, exist_ok=True)
 
+        with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
+            with redirect_stdout(summary_file):
+                # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
+                summary(model, input_size=(1, 28, 28))
+                print("WARNING: The summary function is not counting properly parameters in custom layers")
+
+    train_log = []
+    for epoch in range(1, args.epochs + 1):
+        train_loss = train(args, model, device, train_loader, loss_fn, optimizer, epoch)
+        test_loss, correct = test(args, model, device, test_loader, loss_fn)
+
+        train_log.append((epoch, train_loss, test_loss, correct/1e4))
+
+    if (args.save_model):
         torch.save(model, os.path.join(model_dir, "model.pt"))
         torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
         torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
