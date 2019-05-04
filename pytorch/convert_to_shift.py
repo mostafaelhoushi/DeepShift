@@ -20,9 +20,16 @@ def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weight
                 conversion_count += 1
 
         if type(module) == nn.Conv2d and conversion_count < shift_depth:
-            model._modules[name] = shift.Conv2dShift(module.in_channels, module.out_channels, module.kernel_size, module.stride,
-                                                    module.padding, module.dilation, module.groups,
-                                                    module.bias is not None, module.padding_mode) 
+            conv2d = module
+            shift_conv2d = shift.Conv2dShift(module.in_channels, module.out_channels, module.kernel_size, module.stride,
+                                             module.padding, module.dilation, module.groups,
+                                             module.bias is not None, module.padding_mode) 
+
+            if convert_weights == True:
+                shift_conv2d.shift.data, shift_conv2d.sign.data = get_shift_and_sign(conv2d.weight)
+                shift_conv2d.bias = linear.bias
+
+            model._modules[name] = shift_conv2d
             conversion_count += 1
 
     return model
