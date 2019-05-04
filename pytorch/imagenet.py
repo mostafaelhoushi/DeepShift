@@ -19,6 +19,8 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
+from torchsummary import summary
+
 from convert_to_shift import convert_to_shift
 
 model_names = sorted(name for name in models.__dict__
@@ -198,6 +200,10 @@ def main_worker(gpu, ngpus_per_node, args):
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
+
+    # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
+    summary(model, input_size=(3, 224, 224))
+    print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
