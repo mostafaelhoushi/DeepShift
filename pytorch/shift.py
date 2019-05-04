@@ -9,10 +9,10 @@ import math
 import numpy as np
 
 class LinearShift(nn.Module):
-    def __init__(self, input_features, output_features, bias=True, check_grad=False):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False):
         super(LinearShift, self).__init__()
-        self.input_features = input_features
-        self.output_features = output_features
+        self.in_features = in_features
+        self.out_features = out_features
 
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
@@ -25,10 +25,10 @@ class LinearShift(nn.Module):
             tensor_constructor = torch.DoubleTensor # double precision required to check grad
         else:
             tensor_constructor = torch.Tensor # In PyTorch torch.Tensor is alias torch.FloatTensor
-        self.shift = nn.Parameter(tensor_constructor(output_features, input_features))
-        self.sign = nn.Parameter(tensor_constructor(output_features, input_features))
+        self.shift = nn.Parameter(tensor_constructor(out_features, in_features))
+        self.sign = nn.Parameter(tensor_constructor(out_features, in_features))
         if bias:
-            self.bias = nn.Parameter(tensor_constructor(output_features))
+            self.bias = nn.Parameter(tensor_constructor(out_features))
         else:
             # You should always register all possible parameters, but the
             # optional ones can be None if you want.
