@@ -147,7 +147,7 @@ def main_worker(gpu, ngpus_per_node, args):
         model = models.__dict__[args.arch]()
 
     if args.shift_depth > 0:
-        model = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor

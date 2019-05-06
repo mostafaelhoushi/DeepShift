@@ -6,7 +6,11 @@ import shift
 
 def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weights=False):
     conversion_count = 0
-    for name, module in reversed(list(model.named_modules())):
+    for name, module in reversed(model._modules.items()):
+        if len(list(module.children())) > 0:
+            # recurse
+            model._modules[name], num_converted = convert_to_shift(model=module, shift_depth=shift_depth-conversion_count, convert_all_linear=convert_all_linear, convert_weights=convert_weights)
+            conversion_count += num_converted
         if type(module) == nn.Linear and (convert_all_linear == True or conversion_count < shift_depth):
             linear = module
             shift_linear = shift.LinearShift(module.in_features, module.out_features, module.bias is not None) 
@@ -27,12 +31,12 @@ def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weight
 
             if convert_weights == True:
                 shift_conv2d.shift.data, shift_conv2d.sign.data = get_shift_and_sign(conv2d.weight)
-                shift_conv2d.bias = linear.bias
+                shift_conv2d.bias = conv2d.bias
 
             model._modules[name] = shift_conv2d
             conversion_count += 1
 
-    return model
+    return model, conversion_count
 
 def get_shift_and_sign(x):
     sign = torch.sign(x)
