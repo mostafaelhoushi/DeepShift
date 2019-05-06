@@ -5,6 +5,7 @@ import shutil
 import time
 import warnings
 import sys
+import distutils
 
 import torch
 import torch.nn as nn
@@ -80,8 +81,8 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
-parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
-                    help='For printing the weights of Model (default: True)')
+parser.add_argument('--print-weights', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
+                    help='For printing the weights of Model (default: False)')
 
 
 best_acc1 = 0
