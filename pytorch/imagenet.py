@@ -216,7 +216,7 @@ def main_worker(gpu, ngpus_per_node, args):
     summary(model, input_size=(3, 224, 224))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
-    if args.desc is not None and len(desc) > 0:
+    if args.desc is not None and len(args.desc) > 0:
         model_name = '%s/%s_shift_%s' % (args.arch, args.desc, args.shift_depth)
     else:
         model_name = '%s/shift_%s' % (args.arch, args.shift_depth)
