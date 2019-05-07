@@ -5,7 +5,9 @@ import shutil
 import time
 import warnings
 import sys
+import csv
 import distutils
+from contextlib import redirect_stdout
 
 import torch
 import torch.nn as nn
@@ -81,8 +83,13 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
-parser.add_argument('--print-weights', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
-                    help='For printing the weights of Model (default: False)')
+
+parser.add_argument('--save-model', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+                    help='For Saving the current Model (default: True)')
+parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+                    help='For printing the weights of Model (default: True)')
+parser.add_argument('--desc', type=str, default=None,
+                    help='description to append to model directory name')
 
 
 best_acc1 = 0
@@ -209,6 +216,22 @@ def main_worker(gpu, ngpus_per_node, args):
     summary(model, input_size=(3, 224, 224))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
+    if args.desc is not None and len(desc) > 0:
+        model_name = '%s/%s_shift_%s' % (args.arch, args.desc, args.shift_depth)
+    else:
+        model_name = '%s/shift_%s' % (args.arch, args.shift_depth)
+
+    if (args.save_model):
+        model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "imagenet"), model_name)
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir, exist_ok=True)
+
+        with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
+            with redirect_stdout(summary_file):
+                # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
+                summary(model, input_size=(3, 224, 224))
+                print("WARNING: The summary function is not counting properly parameters in custom layers")
+
     # Data loading code
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
@@ -244,18 +267,24 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
-        validate(val_loader, model, criterion, args)
+        val_log = validate(val_loader, model, criterion, args)
+        val_log = [val_log]
     else:
+        train_log = []
         for epoch in range(args.start_epoch, args.epochs):
             if args.distributed:
                 train_sampler.set_epoch(epoch)
             adjust_learning_rate(optimizer, epoch, args)
 
             # train for one epoch
-            train(train_loader, model, criterion, optimizer, epoch, args)
+            train_epoch_log = train(train_loader, model, criterion, optimizer, epoch, args)
 
             # evaluate on validation set
-            acc1 = validate(val_loader, model, criterion, args)
+            val_epoch_log = validate(val_loader, model, criterion, args)
+            acc1 = val_epoch_log[2]
+
+            # append to log
+            train_log.append(((epoch,) + train_epoch_log + val_epoch_log)) # using + to concatenate tuples
 
             # remember best acc@1 and save checkpoint
             is_best = acc1 > best_acc1
@@ -271,13 +300,33 @@ def main_worker(gpu, ngpus_per_node, args):
                     'optimizer' : optimizer.state_dict(),
                 }, is_best)
 
-    if (args.print_weights):
-        # Print model's state_dict
-        print("Model's state_dict:")
-        for param_tensor in model.state_dict():
-            print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-            print(model.state_dict()[param_tensor])
-            print("")
+    if (args.save_model):
+        # TODO: Use checkpoint above
+        torch.save(model, os.path.join(model_dir, "model.pt"))
+        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
+        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+
+        if not args.evaluate:
+            with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
+                    train_log_csv = csv.writer(train_log_file)
+                    train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_top5_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+                    train_log_csv.writerows(train_log)
+        else:
+            with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
+                    test_log_csv = csv.writer(test_log_file)
+                    test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+                    test_log_csv.writerows(val_log)
+
+        if (args.print_weights):
+            with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
+                with redirect_stdout(weights_log_file):
+                    # Log model's state_dict
+                    print("Model's state_dict:")
+                    # TODO: Use checkpoint above
+                    for param_tensor in model.state_dict():
+                        print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+                        print(model.state_dict()[param_tensor])
+                        print("")
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
@@ -322,6 +371,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.print_freq == 0:
             progress.print(i)
+    
+    return (losses.avg, top1.avg.cpu().numpy(), top5.avg.cpu().numpy(), batch_time.avg)
 
 
 def validate(val_loader, model, criterion, args):
@@ -363,7 +414,7 @@ def validate(val_loader, model, criterion, args):
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))
 
-    return top1.avg
+    return (losses.avg, top1.avg.cpu().numpy(), top5.avg.cpu().numpy(), batch_time.avg)
 
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
