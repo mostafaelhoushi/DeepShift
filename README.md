@@ -18,6 +18,33 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 | ResNet110 | CIFAR10 | 92.65% | 67.86% |
 
 
+
+| Model | Dataset | Original Acc (Top1/Top5) | After Conversion | After Training (10 Epochs) |
+| ----- | ------- | ------------------------ | ---------------- | -------------------------- |
+| VGG11 | ImageNet | 69.02% / 88.63% | TBD | TBD |
+| VGG11-bn | ImageNet | 67.00% / 87.68% | TBD | TBD |
+| VGG13 | ImageNet | 69.93% / 89.25% | TBD | TBD |
+| VGG13-bn | ImageNet | 67.00% / 87.90% | TBD | TBD |
+| VGG16 | ImageNet | 71.59% / 90.38% | TBD | TBD |
+| VGG16-bn | ImageNet | 69.13% / 89.16% | TBD | TBD |
+| VGG19 | ImageNet | 72.38% / 90.88% | TBD | TBD |
+| VGG19-bn | ImageNet | 70.25% / 89.62% | TBD | TBD | 
+| AlexNet | ImageNet | 56.52% / 79.07% | TBD | TBD |
+| DenseNet121 | ImageNet | 69.32% / 89.13% | TBD | TBD |
+| DenseNet161 | ImageNet | 73.72% / 91.90% | TBD | TBD |
+| DenseNet169 | ImageNet | 71.64% / 90.51% | TBD | TBD |
+| DenseNet201 | ImageNet | 70.50% / 90.00% | TBD | TBD |
+| ResNet18 | ImageNet | 66.08% / 86.85% | TBD | TBD |
+| ResNet34 | ImageNet | 69.09% / 88.67% | TBD | TBD |
+| ResNet50 | ImageNet | 71.83% / 90.50% | TBD | TBD |
+| ResNet101 | ImageNet | 71.87% / 90.49% | TBD | TBD |
+| ResNet152 | ImageNet | 74.03% / 91.92% | TBD | TBD |
+| SqueezeNet1-0 | ImageNet | 58.09% / 80.42% | TBD | TBD |
+| SqueezeNet1-1 | ImageNet | 58.18% / 80.62% | TBD | TBD |
+
+
+
+
 #### Converting Some Layers
 Converting only the last `N_shift` convolution layers (as well as the last fully connected layer) to shift layers.
 
