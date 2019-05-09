@@ -25,7 +25,7 @@ import torchvision.models as models
 from torchsummary import summary
 import copy
 
-from convert_to_shift import convert_to_shift
+from convert_to_shift import convert_to_shift, count_layer_type
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -218,10 +218,18 @@ def main_worker(gpu, ngpus_per_node, args):
     summary(model_tmp_copy, input_size=(3, 224, 224))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
-    if args.desc is not None and len(args.desc) > 0:
-        model_name = '%s/%s_shift_%s' % (args.arch, args.desc, args.shift_depth)
+    # name model sub-directory "shift_all" if all layers are converted to shift layers
+    conv2d_layers_count = count_layer_type(model, nn.Conv2d)
+    linear_layers_count = count_layer_type(model, nn.Linear)
+    if (conv2d_layers_count==0 and linear_layers_count==0):
+        shift_label = "shift_all"
     else:
-        model_name = '%s/shift_%s' % (args.arch, args.shift_depth)
+        shift_label = "shift_%s" (args.shift_depth)
+
+    if args.desc is not None and len(args.desc) > 0:
+        model_name = '%s/%s_%s' % (args.arch, args.desc, shift_label)
+    else:
+        model_name = '%s/%s' % (args.arch, shift_label)
 
     if (args.save_model):
         model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "imagenet"), model_name)

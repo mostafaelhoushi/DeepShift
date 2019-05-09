@@ -55,3 +55,14 @@ def round_power_of_2(x):
     shift, sign = get_shift_and_sign(x)    
     x_rounded = (2.0 ** shift) * sign
     return x_rounded
+
+def count_layer_type(model, layer_type):
+    count = 0
+    for name, module in model._modules.items():
+        if len(list(module.children())) > 0:
+            # recurse
+            count += count_layer_type(model=module, layer_type=layer_type)
+        if type(module) == layer_type:
+            count += 1
+
+    return count    
