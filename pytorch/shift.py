@@ -8,11 +8,26 @@ from torch.nn import init
 import math
 import numpy as np
 
+def round_to_fixed(input, bits=16):
+    assert bits >= 1, bits
+    if bits == 1:
+        return torch.sign(input) - 1
+    delta = math.pow(2.0, -(bits/2))
+    bound = math.pow(2.0, bits-1)
+    min_val = - bound
+    max_val = bound - 1
+    rounded = torch.floor(input / delta + 0.5)
+
+    clipped_value = torch.clamp(rounded, min_val, max_val) * delta
+    return clipped_value
+
 class LinearShift(nn.Module):
     def __init__(self, in_features, out_features, bias=True, check_grad=False):
         super(LinearShift, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
+
+        self.check_grad = check_grad
 
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
@@ -41,7 +56,9 @@ class LinearShift(nn.Module):
             self.bias.data.uniform_(-0.1, 0.1)
 
     def forward(self, input):
-        # See the autograd section for explanation of what happens here.
+        if self.check_grad is False:
+            input.data=round_to_fixed(input.data)
+
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
         self.shift.data=self.shift.org.round()
@@ -156,6 +173,8 @@ class Conv2dShift(_ConvNdShift):
 
     #@weak_script_method
     def forward(self, input):
+        input.data=round_to_fixed(input.data)
+
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
         self.shift.data=self.shift.org.round()
