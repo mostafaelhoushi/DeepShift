@@ -22,23 +22,23 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 | Model | Dataset | Original Acc (Top1/Top5) | After Conversion | After Training (10 Epochs) |
 | ----- | ------- | ------------------------ | ---------------- | -------------------------- |
 | VGG11 | ImageNet | 69.02% / 88.63% | 46.76% / 71.29% | TBD |
-| VGG11-bn | ImageNet | 67.00% / 87.68% | 37.49% / 61.94% | TBD |
+| VGG11-bn | ImageNet | 70.37% / 89.81% | 37.49% / 61.94% | TBD |
 | VGG13 | ImageNet | 69.93% / 89.25% | 60.34% / 82.56% | TBD |
-| VGG13-bn | ImageNet | 67.00% / 87.90% | 45.92% / 70.38% | TBD |
+| VGG13-bn | ImageNet | 71.59% / 90.37% | 45.92% / 70.38% | TBD |
 | VGG16 | ImageNet | 71.59% / 90.38% | 65.25% / 86.30% | TBD |
-| VGG16-bn | ImageNet | 69.13% / 89.16% | 56.30% / 79.77% | TBD |
+| VGG16-bn | ImageNet | 73.36% / 91.52% | 56.30% / 79.77% | TBD |
 | VGG19 | ImageNet | 72.38% / 90.88% | 66.61% / 87.21% | TBD |
-| VGG19-bn | ImageNet | 70.25% / 89.62% | 58.96% / 82.02% | TBD | 
+| VGG19-bn | ImageNet | 74.22% / 91.84% | 58.96% / 82.02% | TBD | 
 | AlexNet | ImageNet | 56.52% / 79.07% | 42.99% / 67.40% | TBD |
-| DenseNet121 | ImageNet | 69.32% / 89.13% | 41.69% / 67.25% | TBD |
-| DenseNet161 | ImageNet | 73.72% / 91.90% | 58.32% / 82.08% | TBD |
-| DenseNet169 | ImageNet | 71.64% / 90.51% | 45.54% / 69.73% | TBD |
-| DenseNet201 | ImageNet | 70.50% / 90.00% | 46.93% / 70.61% | TBD |
-| ResNet18 | ImageNet | 66.08% / 86.85% | 43.98% / 69.36% | TBD |
-| ResNet34 | ImageNet | 69.09% / 88.67% | 55.24% / 80.08% | TBD |
-| ResNet50 | ImageNet | 71.83% / 90.50% | 46.37% / 70.19% | TBD |
-| ResNet101 | ImageNet | 71.87% / 90.49% | 54.44% / 77.29% | TBD |
-| ResNet152 | ImageNet | 74.03% / 91.92% | 47.49% / 70.79% | TBD |
+| DenseNet121 | ImageNet | 74.43% / 91.97% | 41.69% / 67.25% | TBD |
+| DenseNet161 | ImageNet | 77.14% / 93.56% | 58.32% / 82.08% | TBD |
+| DenseNet169 | ImageNet | 75.60% / 92.81% | 45.54% / 69.73% | TBD |
+| DenseNet201 | ImageNet | 76.90% / 93.37% | 46.93% / 70.61% | TBD |
+| ResNet18 | ImageNet | 69.76% / 89.08% | 43.98% / 69.36% | TBD |
+| ResNet34 | ImageNet | 73.31% / 91.42% | 55.24% / 80.08% | TBD |
+| ResNet50 | ImageNet | 76.13% / 92.86% | 46.37% / 70.19% | TBD |
+| ResNet101 | ImageNet | 77.37% / 93.55% | 54.44% / 77.29% | TBD |
+| ResNet152 | ImageNet | 78.31% / 94.05% | 47.49% / 70.79% | TBD |
 | SqueezeNet1-0 | ImageNet | 58.09% / 80.42% | 21.34% / 43.37% | TBD |
 | SqueezeNet1-1 | ImageNet | 58.18% / 80.62% | 11.14% / 27.06% | TBD |
 
