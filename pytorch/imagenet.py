@@ -224,7 +224,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if (conv2d_layers_count==0 and linear_layers_count==0):
         shift_label = "shift_all"
     else:
-        shift_label = "shift_%s" (args.shift_depth)
+        shift_label = "shift_%s" % (args.shift_depth)
 
     if args.desc is not None and len(args.desc) > 0:
         model_name = '%s/%s_%s' % (args.arch, args.desc, shift_label)
