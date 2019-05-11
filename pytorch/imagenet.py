@@ -236,6 +236,10 @@ def main_worker(gpu, ngpus_per_node, args):
         if not os.path.isdir(model_dir):
             os.makedirs(model_dir, exist_ok=True)
 
+        with open(os.path.join(model_dir, 'command_args.txt'), 'w') as command_args_file:
+            for arg, value in sorted(vars(args).items()):
+                command_args_file.write(arg + ": " + str(value) + "\n")
+
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
