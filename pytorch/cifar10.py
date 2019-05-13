@@ -41,7 +41,7 @@ parser.add_argument('-s', '--shift_depth', type=int, default=0,
                     help='how many layers to convert to shift')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -52,19 +52,23 @@ parser.add_argument('-b', '--batch-size', default=128, type=int,
                          'using Data Parallel or Distributed Data Parallel')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
+parser.add_argument('--lr-schedule', dest='lr_schedule', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
+                    help='using learning rate schedule')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
-                    metavar='N', help='print frequency (default: 10)')
+parser.add_argument('-p', '--print-freq', default=50, type=int,
+                    metavar='N', help='print frequency (default: 50)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='use model pre-trained on ImageNet')
+parser.add_argument('--freeze', dest='freeze', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+                    help='freeze pre-trained weights')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
@@ -149,13 +153,17 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
         model = models.__dict__[args.arch](pretrained=True)
+
+        if args.freeze:
+            for param in model.parameters():
+                param.requires_grad = False
     else:
         print("=> creating model '{}'".format(args.arch))
         model = models.__dict__[args.arch]()
 
     # change FC layer to accomodate daatset labels
     num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, 10)
+    model.fc = nn.Linear(num_ftrs, 10) # Parameters of newly constructed modules have requires_grad=True by default
 
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained)
@@ -196,6 +204,16 @@ def main_worker(gpu, ngpus_per_node, args):
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
+    if (args.lr_schedule):
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                            milestones=[100, 150], last_epoch=args.start_epoch - 1)
+
+    if args.arch in ['resnet1202', 'resnet110']:
+        # for resnet1202 original paper uses lr=0.01 for first 400 minibatches for warm-up
+        # then switch back. In this implementation it will correspond for first epoch.
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = args.lr*0.1
+
     # optionally resume from a checkpoint
     if args.resume:
         if os.path.isfile(args.resume):
@@ -217,7 +235,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
     model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
-    summary(model_tmp_copy, input_size=(3, 224, 224))
+    summary(model_tmp_copy, input_size=(3, 32, 32))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     # name model sub-directory "shift_all" if all layers are converted to shift layers
@@ -245,7 +263,7 @@ def main_worker(gpu, ngpus_per_node, args):
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                summary(model_tmp_copy, input_size=(3, 224, 224))
+                summary(model_tmp_copy, input_size=(3, 32, 32))
                 print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     del model_tmp_copy # to save memory
@@ -262,7 +280,6 @@ def main_worker(gpu, ngpus_per_node, args):
         train=True,
         transform=transforms.Compose([
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
             normalize,
         ]), download=True)
@@ -298,7 +315,10 @@ def main_worker(gpu, ngpus_per_node, args):
             adjust_learning_rate(optimizer, epoch, args)
 
             # train for one epoch
+            print('current lr {:.4f}'.format(optimizer.param_groups[0]['lr']))
             train_epoch_log = train(train_loader, model, criterion, optimizer, epoch, args)
+            if (args.lr_schedule):
+                lr_scheduler.step()
 
             # evaluate on validation set
             val_epoch_log = validate(val_loader, model, criterion, args)
@@ -330,12 +350,12 @@ def main_worker(gpu, ngpus_per_node, args):
         if not args.evaluate:
             with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
                     train_log_csv = csv.writer(train_log_file)
-                    train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_top5_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+                    train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_time'])
                     train_log_csv.writerows(train_log)
         else:
             with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
                     test_log_csv = csv.writer(test_log_file)
-                    test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+                    test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_time'])
                     test_log_csv.writerows(val_log)
 
         if (args.print_weights):
