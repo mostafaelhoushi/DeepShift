@@ -27,9 +27,25 @@ import copy
 
 from convert_to_shift import convert_to_shift, count_layer_type
 
+import resnet_cifar10
+
+'''
+Unfortunately, none of the pytorch repositories with ResNets on CIFAR10 provides an 
+implementation as described in the original paper. If you just use the torchvision's 
+models on CIFAR10 you'll get the model that differs in number of layers and parameters. 
+This is unacceptable if you want to directly compare ResNet-s on CIFAR10 with the 
+original paper. The purpose of resnet_cifar10 (which has been obtained from https://github.com/akamaster/pytorch_resnet_cifar10
+is to provide a valid pytorch implementation of ResNet-s for CIFAR10 as described in the original paper. 
+'''
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
+    and not name.startswith("resnet")
     and callable(models.__dict__[name]))
+model_names.extend(sorted(name for name in resnet_cifar10.__dict__
+    if name.islower() and not name.startswith("__")
+                     and name.startswith("resnet")
+                     and callable(resnet_cifar10.__dict__[name])))
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
@@ -65,9 +81,9 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
-parser.add_argument('--pretrained', dest='pretrained', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+parser.add_argument('--pretrained', dest='pretrained', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='use model pre-trained on ImageNet')
-parser.add_argument('--freeze', dest='freeze', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+parser.add_argument('--freeze', dest='freeze', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='freeze pre-trained weights')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
@@ -159,11 +175,17 @@ def main_worker(gpu, ngpus_per_node, args):
                 param.requires_grad = False
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+        if args.arch.startswith("resnet"):
+            model = resnet_cifar10.__dict__[args.arch]()
+        else:
+            model = models.__dict__[args.arch]()
 
-    # change FC layer to accomodate daatset labels
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, 10) # Parameters of newly constructed modules have requires_grad=True by default
+    if not args.arch.startswith("resnet"):
+        # change FC layer to accomodate daatset labels
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, 10) # Parameters of newly constructed modules have requires_grad=True by default
+        # TODO: Check https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html to handle different models
+
 
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained)
@@ -315,7 +337,7 @@ def main_worker(gpu, ngpus_per_node, args):
             adjust_learning_rate(optimizer, epoch, args)
 
             # train for one epoch
-            print('current lr {:.4f}'.format(optimizer.param_groups[0]['lr']))
+            print('current lr {:.4e}'.format(optimizer.param_groups[0]['lr']))
             train_epoch_log = train(train_loader, model, criterion, optimizer, epoch, args)
             if (args.lr_schedule):
                 lr_scheduler.step()
