@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 import csv
+import distutils
 import os
 from contextlib import redirect_stdout
 
@@ -112,6 +113,8 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
+    parser.add_argument('--pretrained', dest='pretrained', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
+                        help='use pre-trained model of full conv or fc model')
     
     parser.add_argument('--save-model', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                         help='For Saving the current Model (default: True)')
@@ -146,8 +149,12 @@ def main():
     elif args.type == 'conv':
         model = ConvMNIST().to(device)
 
+    if args.pretrained:
+        model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
+
     if args.shift_depth > 0:
-        model = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear')).to(device)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'))
+        model = model.to(device)
 
     loss_fn = F.cross_entropy # F.nll_loss
     if args.type == 'linear' or (args.type == 'conv' and args.shift_depth > 0):
@@ -155,7 +162,7 @@ def main():
     else:
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
-    if args.desc is not None and len(desc) > 0:
+    if args.desc is not None and len(args.desc) > 0:
         model_name = 'simple_%s/%s_shift_%s' % (args.type, args.desc, args.shift_depth)
     else:
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
