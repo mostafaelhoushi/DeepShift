@@ -68,7 +68,7 @@ parser.add_argument('-b', '--batch-size', default=128, type=int,
                          'using Data Parallel or Distributed Data Parallel')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
-parser.add_argument('--lr-schedule', dest='lr_schedule', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
+parser.add_argument('--lr-schedule', dest='lr_schedule', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='using learning rate schedule')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
@@ -302,6 +302,7 @@ def main_worker(gpu, ngpus_per_node, args):
         train=True,
         transform=transforms.Compose([
             transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(size=32, padding=4),
             transforms.ToTensor(),
             normalize,
         ]), download=True)
