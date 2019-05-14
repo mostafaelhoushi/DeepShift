@@ -337,9 +337,9 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         train_log = []
 
-        train_log_file = open(os.path.join(model_dir, "train_log.csv"), "w") 
-        train_log_csv = csv.writer(train_log_file)
-        train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_time'])
+        with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
+            train_log_csv = csv.writer(train_log_file)
+            train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_time'])
 
         for epoch in range(args.start_epoch, args.epochs):
             if args.distributed:
@@ -357,7 +357,9 @@ def main_worker(gpu, ngpus_per_node, args):
             acc1 = val_epoch_log[2]
 
             # append to log
-            train_log_csv.writerow(((epoch,) + train_epoch_log + val_epoch_log)) 
+            with open(os.path.join(model_dir, "train_log.csv"), "a") as train_log_file:
+                train_log_csv = csv.writer(train_log_file)
+                train_log_csv.writerow(((epoch,) + train_epoch_log + val_epoch_log)) 
 
             # remember best acc@1 and save checkpoint
             is_best = acc1 > best_acc1
