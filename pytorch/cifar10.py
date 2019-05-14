@@ -375,7 +375,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if (args.save_model):
         # TODO: Use checkpoint above
-        torch.save(model, os.path.join(model_dir, "model.pt"))
+        try:
+            torch.save(model, os.path.join(model_dir, "model.pt"))
+        except:
+            print("Failed to save model")
         torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
         torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
 
