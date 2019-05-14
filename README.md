@@ -30,12 +30,12 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 | VGG19 | ImageNet | 72.38% / 90.88% | 66.61% / 87.21% | TBD |
 | VGG19-bn | ImageNet | 74.22% / 91.84% | 58.96% / 82.02% | TBD | 
 | AlexNet | ImageNet | 56.52% / 79.07% | 42.99% / 67.40% | TBD |
-| DenseNet121 | ImageNet | 74.43% / 91.97% | 41.69% / 67.25% | TBD |
+| DenseNet121 | ImageNet | 74.43% / 91.97% | 41.69% / 67.25% | 70.41% / 89.93% |
 | DenseNet161 | ImageNet | 77.14% / 93.56% | 58.32% / 82.08% | TBD |
 | DenseNet169 | ImageNet | 75.60% / 92.81% | 45.54% / 69.73% | TBD |
 | DenseNet201 | ImageNet | 76.90% / 93.37% | 46.93% / 70.61% | TBD |
 | ResNet18 | ImageNet | 69.76% / 89.08% | 43.98% / 69.36% | TBD |
-| ResNet34 | ImageNet | 73.31% / 91.42% | 55.24% / 80.08% | TBD |
+| ResNet34 | ImageNet | 73.31% / 91.42% | 55.24% / 80.08% | 70.99% / 90.13% |
 | ResNet50 | ImageNet | 76.13% / 92.86% | 46.37% / 70.19% | TBD |
 | ResNet101 | ImageNet | 77.37% / 93.55% | 54.44% / 77.29% | TBD |
 | ResNet152 | ImageNet | 78.31% / 94.05% | 47.49% / 70.79% | TBD |
