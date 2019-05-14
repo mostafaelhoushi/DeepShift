@@ -378,13 +378,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if (args.save_model):
         # TODO: Use checkpoint above
-        try:
-            torch.save(model, os.path.join(model_dir, "model.pt"))
-        except:
-            print("Failed to save model")
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
-
         if (args.print_weights):
             with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
                 with redirect_stdout(weights_log_file):
@@ -395,6 +388,11 @@ def main_worker(gpu, ngpus_per_node, args):
                         print(param_tensor, "\t", model.state_dict()[param_tensor].size())
                         print(model.state_dict()[param_tensor])
                         print("")
+
+        # TODO: Use checkpoint above
+        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
+        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+        torch.save(model, os.path.join(model_dir, "model.pt"))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
