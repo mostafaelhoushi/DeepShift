@@ -173,18 +173,18 @@ def main_worker(gpu, ngpus_per_node, args):
         elif args.pretrained == "cifar10":
             model = resnet_cifar10.__dict__[args.arch]()
 			
-			# original saved file with DataParallel
-            state_dict = torch.load("./models/cifar10/" + args.arch + "/shift_0/weights.pt")
+            # original saved file with DataParallel
+            saved_checkpoint = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
+            state_dict = saved_checkpoint["state_dict"]
 			
-			# create new OrderedDict that does not contain module.
+            # create new OrderedDict that does not contain module.
             new_state_dict = OrderedDict()
             for k, v in state_dict.items():
                 name = k[7:] # remove module.
                 new_state_dict[name] = v
 			
-            # load params
-            model.load_state_dict(new_state_dict)
-			
+			# load params
+            model.load_state_dict(new_state_dict)		
         else:
             raise Exception("Currently model {} does not support weights {}".format(args.arch, args.pretrained))
     else:
