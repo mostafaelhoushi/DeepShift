@@ -23,8 +23,8 @@ and then the model is re-trained for a small number of epochs.
 |-------| ------- | -------------------------- | ----------------------------- | ----------------------------- | ----------------------------- |
 | Simple FC Model | MNIST | 93.59% | 78.55% | 90.19% | 93.78% |
 | Simple Conv Model | MNIST | 98.91% | 85.38% | 98.41% | 98.98% |
-| ResNet20 | CIFAR10 | 91.73% | 47.59% | 77.14% | 89.32% |
-| ResNet32 | CIFAR10 | 92.63% | 52.92% | TBD | TBD |
+| ResNet20 | CIFAR10 | 91.73% | 47.59% | 83.66% | 89.32% |
+| ResNet32 | CIFAR10 | 92.63% | 52.92% | 85.84% | 92.16% |
 | ResNet44 | CIFAR10 | 93.10% | 59.11% | TBD | TBD |
 | ResNet56 | CIFAR10 | 93.39% | 61.62% | TBD | TBD |
 | ResNet110 | CIFAR10 | 93.68% | 67.17% | TBD | TBD | 
