@@ -30,7 +30,7 @@ and then the model is re-trained for a small number of epochs.
 | ResNet110 | CIFAR10 | 93.68% | 67.17% | 90.81% | TBD | 
 
 
-| Model | Dataset | Original Acc (Top1/Top5) | After Conversion | After Training (10 Epochs) |
+| Model | Dataset | Original Version (Top1/Top5) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights<br>+ Train) |
 | ----- | ------- | ------------------------ | ---------------- | -------------------------- |
 | VGG11 | ImageNet | 69.02% / 88.63% | 46.76% / 71.29% | TBD |
 | VGG11-bn | ImageNet | 70.37% / 89.81% | 37.49% / 61.94% | TBD |
