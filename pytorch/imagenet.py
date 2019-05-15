@@ -285,8 +285,18 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.evaluate:
         val_log = validate(val_loader, model, criterion, args)
         val_log = [val_log]
+
+        with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
+            test_log_csv = csv.writer(test_log_file)
+            test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+            test_log_csv.writerows(val_log)
     else:
         train_log = []
+
+        with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
+            train_log_csv = csv.writer(train_log_file)
+            train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_top5_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+
         for epoch in range(args.start_epoch, args.epochs):
             if args.distributed:
                 train_sampler.set_epoch(epoch)
@@ -300,7 +310,9 @@ def main_worker(gpu, ngpus_per_node, args):
             acc1 = val_epoch_log[2]
 
             # append to log
-            train_log.append(((epoch,) + train_epoch_log + val_epoch_log)) # using + to concatenate tuples
+            with open(os.path.join(model_dir, "train_log.csv"), "a") as train_log_file:
+                train_log_csv = csv.writer(train_log_file)
+                train_log_csv.writerow(((epoch,) + train_epoch_log + val_epoch_log)) 
 
             # remember best acc@1 and save checkpoint
             is_best = acc1 > best_acc1
@@ -318,21 +330,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if (args.save_model):
         # TODO: Use checkpoint above
-        torch.save(model, os.path.join(model_dir, "model.pt"))
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
-
-        if not args.evaluate:
-            with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
-                    train_log_csv = csv.writer(train_log_file)
-                    train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_top5_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
-                    train_log_csv.writerows(train_log)
-        else:
-            with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
-                    test_log_csv = csv.writer(test_log_file)
-                    test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
-                    test_log_csv.writerows(val_log)
-
         if (args.print_weights):
             with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
                 with redirect_stdout(weights_log_file):
@@ -343,6 +340,11 @@ def main_worker(gpu, ngpus_per_node, args):
                         print(param_tensor, "\t", model.state_dict()[param_tensor].size())
                         print(model.state_dict()[param_tensor])
                         print("")
+
+        # TODO: Use checkpoint above
+        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
+        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+        torch.save(model, os.path.join(model_dir, "model.pt"))
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
