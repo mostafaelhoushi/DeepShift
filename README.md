@@ -27,7 +27,7 @@ and then the model is re-trained for a small number of epochs.
 | ResNet32 | CIFAR10 | 92.63% | 52.92% | 85.84% | 92.16% |
 | ResNet44 | CIFAR10 | 93.10% | 59.11% | TBD | TBD |
 | ResNet56 | CIFAR10 | 93.39% | 61.62% | TBD | TBD |
-| ResNet110 | CIFAR10 | 93.68% | 67.17% | TBD | TBD | 
+| ResNet110 | CIFAR10 | 93.68% | 67.17% | 90.81% | TBD | 
 
 
 | Model | Dataset | Original Acc (Top1/Top5) | After Conversion | After Training (10 Epochs) |
