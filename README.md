@@ -3,20 +3,26 @@
 
 This is a project that aims to replace multiplications in a neural networks with bitwise shift (and sign change).
 
+The results below are using PyTorch. Results using Keras are slightly different and its implementation still needs to be finalized.
+
 ### Results So Far
-#### Converting all Layers
-Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `DenseShift`:
+Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `DenseShift`.
 
-| Model | Dataset | Reported Original Version | DeepShift Version | 
-|-------| ------- | -------------------------- | ----------------------------- |
-| MobileNet | CIFAR10 | 78.05% | 57.37% |
-| ResNet20 | CIFAR10 | 92.16% | 53.06% |
-| ResNet32 | CIFAR10 | 92.46% | 58.21% |
-| ResNet44 | CIFAR10 | 92.50% | 61.02% |
-| ResNet50 | CIFAR10 | N/A | 61.97%  |
-| ResNet56 | CIFAR10 | 92.71% |  63.19% |
-| ResNet110 | CIFAR10 | 92.65% | 67.86% |
+When converting a convolution layer or fully connected layer to a shifted layer, the following conversion is made to get the shifts that are closest in equivalent to the original weights: 
+```
+[kernel, bias] = original_layer.get_weights()
+shift = log2(round(abs(kernel)))
+sign = sign(kernel)
+sign[sign==1] = 0
+sign[sign==-1] = 1
+shift_layer.set_weights([shift, sign, bias])
+```
+and then the model is re-trained for a small number of epochs.
 
+| Model | Dataset | Original Version | DeepShift Version<br>(Train from Scratch) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights + Train) 
+|-------| ------- | -------------------------- | ----------------------------- | ----------------------------- | ----------------------------- |
+| Simple FC Model | MNIST | 93.59% | 78.55% | TBD | 93.78% |
+| Simple Conv Model | MNIST | 98.91% | 85.38% | TBD | 98.98% |
 
 
 | Model | Dataset | Original Acc (Top1/Top5) | After Conversion | After Training (10 Epochs) |
@@ -42,83 +48,6 @@ Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `Dense
 | SqueezeNet1-0 | ImageNet | 58.09% / 80.42% | 21.34% / 43.37% | TBD |
 | SqueezeNet1-1 | ImageNet | 58.18% / 80.62% | 11.14% / 27.06% | TBD |
 
-
-
-
-#### Converting Some Layers
-Converting only the last `N_shift` convolution layers (as well as the last fully connected layer) to shift layers.
-
-**ResNet20 on CIFAR10**:
-
-| # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
-| --------------- | -------------------- | --------------------- | ------------------- |
-| 21 | 0 |  |  |
-| 18 | 3 | 90.9% | 88.56% |
-| 17 | 4 | 90.6% | 88.05% |
-| 13 | 8 | 88.0% | 84.62% |
-| 9 | 12 | 82.7% | 80.51% |
-| 0 | 21 | 51.3%  | 53.06% |
-
-
-**ResNet32 on CIFAR10**:
-
-| # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
-| --------------- | -------------------- | --------------------- | ------------------- |
-| 33 | 0 |  |  |
-| 27 | 6 | 91.8% | 89.47% |
-
-
-
-**ResNet50 on CIFAR10**:
-
-| # Conv2D Layers | **# Conv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
-| --------------- | -------------------- | --------------------- | ------------------- |
-| 51 | 0 |  | 91.93% |
-| 39 | 12 | 98.3%  | 92.09% |
-| 29 | 22 | 90.9% | 87.02% |
-| 19 | 32 | 85.4% | 82.81% |
-| 9 | 42 | 79.5%  | 78.42% |
-| 0 | 51 | 59.0%  | 61.97% |
-
-
-**MobileNet on CIFAR10**:
-
-| # Conv2D Layers | # DWConv2D Layers | **# Conv2DShift Layers** | **# DWConv2DShift Layers** | Training Accuracy | **Validation Accuracy** |
-| --------------- | ----------------- | -------------------- | ---------------------- | ----------------- | ------------------- |
-| 16 | 13 | **0** | **0** | 99.7% | **78.05%** |
-| 13 | 13 | **3** | **0** | 99.7% | **79.11%** |
-| 10 | 13 | **6** | **0** | 99.7% | **78.15%** |
-| 7 | 13 | **9** | **0** | 99.4% | **76.69%** |
-| 4 | 13 | **12** | **0** | 92.5% | **73.23%** |
-| 0 | 13 | **16** | **0** | 92.5% | **70.34%** |
-| 0 | 0 | **16** | **13** | 63.5% | **57.37%** |
-| | | | | | |
-| 13 | 12 | **3** | **1** | 99.8% | **78.34%** |
-| 11 | 10 | **5** | **3** | 99.8% | **79.03%** |
-| 9 | 8 | **7** | **5** | 99.6% | **77.19%** |
-| 7 | 6 | **9** | **7** | 99.4% | **75.11%** |
-| 5 | 4 | **11** | **9** | 93.3% | **70.60%** |
-| 2 | 2 | **14** | **11** | 75.9% | **67.04%** |
-
-
-**MobileNet on Imagenet**:
-
-The results below have been based on Keras' model pre-trained on Imagenet. When converting a convolution layer or fully connected layer to a shifted layer, the following conversion is made to get the shifts that are closest in equivalent to the original weights: 
-```
-[kernel, bias] = original_layer.get_weights()
-shift = log2(round(abs(kernel)))
-sign = sign(kernel)
-sign[sign==1] = 0
-sign[sign==-1] = 1
-shift_layer.set_weights([shift, sign, bias])
-```
-and then the model is re-trained for a small number of epochs.
-
-| # Conv2D Layers | # DWConv2D Layers | **# Conv2DShift Layers** | **# DWConv2DShift Layers** | Epochs Retrained | Training Accuracy | **Validation Accuracy** |
-| --------------- | ----------------- | ------------------------ | -------------------------- | ---------------- | ----------------- | ----------------------- |
-| 16 | 13 | **0** | **0** | 0 | 74.9% | **61.87%** |
-| 14 | 12 | **2** | **1** | 12 | 73.7% | **60.69%** |
-| 12 | 11 | **4** | **2** | 24 | 73.4% | **59.03%** |
 
 ### Codewalk Through
 * `keras`: directory containing implementation, tests, and saved models using Keras
