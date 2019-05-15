@@ -19,10 +19,10 @@ shift_layer.set_weights([shift, sign, bias])
 ```
 and then the model is re-trained for a small number of epochs.
 
-| Model | Dataset | Original Version | DeepShift Version<br>(Train from Scratch) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights + Train) 
+| Model | Dataset | Original Version | DeepShift Version<br>(Train from Scratch) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights<br>+ Train) 
 |-------| ------- | -------------------------- | ----------------------------- | ----------------------------- | ----------------------------- |
-| Simple FC Model | MNIST | 93.59% | 78.55% | TBD | 93.78% |
-| Simple Conv Model | MNIST | 98.91% | 85.38% | TBD | 98.98% |
+| Simple FC Model | MNIST | 93.59% | 78.55% | 90.19% | 93.78% |
+| Simple Conv Model | MNIST | 98.91% | 85.38% | 98.41% | 98.98% |
 
 
 | Model | Dataset | Original Acc (Top1/Top5) | After Conversion | After Training (10 Epochs) |

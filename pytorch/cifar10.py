@@ -81,7 +81,7 @@ parser.add_argument('-p', '--print-freq', default=50, type=int,
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-                    help='evaluate model on validation set')
+                    help='only evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', default="none", choices=["none", "imagenet", "cifar10"], 
                     help='choose whether model is not pre-trained, or pre-trained on ImageNet, or on CIFAR10')
 parser.add_argument('--freeze', dest='freeze', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 

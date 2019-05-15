@@ -107,6 +107,8 @@ def main():
                         help='learning rate (default: 0.01)')
     parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
                         help='SGD momentum (default: 0.0)')
+    parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                        help='only evaluate model on validation set')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
@@ -182,22 +184,31 @@ def main():
                 summary(model, input_size=(1, 28, 28))
                 print("WARNING: The summary function is not counting properly parameters in custom layers")
 
-    train_log = []
-    for epoch in range(1, args.epochs + 1):
-        train_loss = train(args, model, device, train_loader, loss_fn, optimizer, epoch)
+    if args.evaluate:
         test_loss, correct = test(args, model, device, test_loader, loss_fn)
+        test_log = [(test_loss, correct/1e4)]
 
-        train_log.append((epoch, train_loss, test_loss, correct/1e4))
+        with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
+            test_log_csv = csv.writer(test_log_file)
+            test_log_csv.writerow(['test_loss', 'correct'])
+            test_log_csv.writerows(test_log)
+    else:
+        train_log = []
+        for epoch in range(1, args.epochs + 1):
+            train_loss = train(args, model, device, train_loader, loss_fn, optimizer, epoch)
+            test_loss, correct = test(args, model, device, test_loader, loss_fn)
 
-    if (args.save_model):
-        torch.save(model, os.path.join(model_dir, "model.pt"))
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+            train_log.append((epoch, train_loss, test_loss, correct/1e4))
 
         with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
             train_log_csv = csv.writer(train_log_file)
             train_log_csv.writerow(['epoch', 'train_loss', 'test_loss', 'test_accuracy'])
             train_log_csv.writerows(train_log)
+
+    if (args.save_model):
+        torch.save(model, os.path.join(model_dir, "model.pt"))
+        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
+        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
 
     if (args.print_weights):
         # Print model's state_dict
