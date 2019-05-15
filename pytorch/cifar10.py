@@ -8,6 +8,7 @@ import sys
 import csv
 import distutils
 from contextlib import redirect_stdout
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -81,8 +82,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
-parser.add_argument('--pretrained', dest='pretrained', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
-                    help='use model pre-trained on ImageNet')
+parser.add_argument('--pretrained', dest='pretrained', default="none", choices=["none", "imagenet", "cifar10"], 
+                    help='choose whether model is not pre-trained, or pre-trained on ImageNet, or on CIFAR10')
 parser.add_argument('--freeze', dest='freeze', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='freeze pre-trained weights')
 parser.add_argument('--world-size', default=-1, type=int,
@@ -166,29 +167,48 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
-
+    if args.arch.startswith("resnet") and args.pretrained != "imagenet":
+        if args.pretrained == "none": 
+            model = resnet_cifar10.__dict__[args.arch]()
+        elif args.pretrained == "cifar10":
+            model = resnet_cifar10.__dict__[args.arch]()
+			
+			# original saved file with DataParallel
+            state_dict = torch.load("./models/cifar10/" + args.arch + "/shift_0/weights.pt")
+			
+			# create new OrderedDict that does not contain module.
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:] # remove module.
+                new_state_dict[name] = v
+			
+            # load params
+            model.load_state_dict(new_state_dict)
+			
+        else:
+            raise Exception("Currently model {} does not support weights {}".format(args.arch, args.pretrained))
+    else:
+        if args.pretrained == "none": 
+            model = models.__dict__[args.arch]()
+        elif args.pretrained == "imagenet":
+            model = models.__dict__[args.arch](pretrained=True)
+        else:
+            raise Exception("Currently model {} does not support weights {}".format(args.arch, args.pretrained))
+			
+    if args.pretrained != "none":
         if args.freeze:
             for param in model.parameters():
                 param.requires_grad = False
-    else:
-        print("=> creating model '{}'".format(args.arch))
-        if args.arch.startswith("resnet"):
-            model = resnet_cifar10.__dict__[args.arch]()
-        else:
-            model = models.__dict__[args.arch]()
 
     if not args.arch.startswith("resnet"):
-        # change FC layer to accomodate daatset labels
+        # change FC layer to accomodate dataset labels
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, 10) # Parameters of newly constructed modules have requires_grad=True by default
         # TODO: Check https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html to handle different models
 
-
+	# convert layers to shift
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = (args.pretrained != "none"))
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
