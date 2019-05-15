@@ -150,10 +150,10 @@ def main():
         model = ConvMNIST().to(device)
 
     if args.pretrained:
-        model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
+        mdoel = model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'))
+        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True)
         model = model.to(device)
 
     loss_fn = F.cross_entropy # F.nll_loss
