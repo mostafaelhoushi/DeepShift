@@ -28,7 +28,7 @@ and then the model is re-trained for a small number of epochs.
 | ResNet44 | CIFAR10 | 93.10% | 59.11% | 87.90% | 92.74% |
 | ResNet56 | CIFAR10 | 93.39% | 61.62% | 91.03% | 93.46% |
 | ResNet110 | CIFAR10 | 93.68% | 67.17% | 90.81% | 93.68% | 
-| ResNet1202 | CIFAR10 | 93.82% | TBD | 91.22% | TBD |
+| ResNet1202 | CIFAR10 | 93.82% | TBD | 91.22% | 93.63% |
 
 
 | Model | Dataset | Original Version (Top1/Top5) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights<br>+ Train) |
