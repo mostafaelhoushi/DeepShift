@@ -33,7 +33,7 @@ and then the model is re-trained for a small number of epochs.
 
 | Model | Dataset | Original Version (Top1/Top5) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights<br>+ Train) |
 | ----- | ------- | ------------------------ | ---------------- | -------------------------- |
-| VGG11 | ImageNet | 69.02% / 88.63% | 46.76% / 71.29% | TBD |
+| VGG11 | ImageNet | 69.02% / 88.63% | 46.76% / 71.29% | 65.61% / 86.72% |
 | VGG11-bn | ImageNet | 70.37% / 89.81% | 37.49% / 61.94% | 63.52% / 85.68% |
 | VGG13 | ImageNet | 69.93% / 89.25% | 60.34% / 82.56% | 68.09% / 88.22% |
 | VGG13-bn | ImageNet | 71.59% / 90.37% | 45.92% / 70.38% | 57.97% / 81.83% |
