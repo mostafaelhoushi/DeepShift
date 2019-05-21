@@ -45,7 +45,7 @@ and then the model is re-trained for a small number of epochs.
 | DenseNet121 | ImageNet | 74.43% / 91.97% | 46.40% / 71.95% | 70.41% / 89.93% |
 | DenseNet161 | ImageNet | 77.14% / 93.56% | 61.97% / 84.64% | TBD |
 | DenseNet169 | ImageNet | 75.60% / 92.81% | 39.24% / 63.93% | TBD |
-| DenseNet201 | ImageNet | 76.90% / 93.37% | 51.84% / 75.83% | TBD |
+| DenseNet201 | ImageNet | 76.90% / 93.37% | 51.84% / 75.83% | 73.83% / 91.80% |
 | ResNet18 | ImageNet | 69.76% / 89.08% | 41.53% / 67.29% | 65.81% / 86.88% |
 | ResNet34 | ImageNet | 73.31% / 91.42% | 56.26% / 80.22% | 70.99% / 90.13% |
 | ResNet50 | ImageNet | 76.13% / 92.86% | 41.30% / 65.10% | 68.42% / 88.66% |
