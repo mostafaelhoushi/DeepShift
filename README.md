@@ -41,7 +41,7 @@ and then the model is re-trained for a small number of epochs.
 | VGG16-bn | ImageNet | 73.36% / 91.52% | 56.30% / 79.77% | TBD |
 | VGG19 | ImageNet | 72.38% / 90.88% | 66.61% / 87.21% | TBD |
 | VGG19-bn | ImageNet | 74.22% / 91.84% | 58.96% / 82.02% | TBD | 
-| AlexNet | ImageNet | 56.52% / 79.07% | 42.99% / 67.40% | TBD |
+| AlexNet | ImageNet | 56.52% / 79.07% | 42.99% / 67.40% | 48.81% / 73.39% |
 | DenseNet121 | ImageNet | 74.43% / 91.97% | 46.40% / 71.95% | 70.41% / 89.93% |
 | DenseNet161 | ImageNet | 77.14% / 93.56% | 61.97% / 84.64% | TBD |
 | DenseNet169 | ImageNet | 75.60% / 92.81% | 39.24% / 63.93% | TBD |
@@ -51,8 +51,8 @@ and then the model is re-trained for a small number of epochs.
 | ResNet50 | ImageNet | 76.13% / 92.86% | 41.30% / 65.10% | 68.42% / 88.66% |
 | ResNet101 | ImageNet | 77.37% / 93.55% | 52.59% / 76.57% | 69.21% / 88.95% |
 | ResNet152 | ImageNet | 78.31% / 94.05% | 46.14% / 69.15% | 75.56% / 92.75% |
-| SqueezeNet1-0 | ImageNet | 58.09% / 80.42% | 12.56% / 29.92% | TBD |
-| SqueezeNet1-1 | ImageNet | 58.18% / 80.62% | 4.01% / 12.19% | TBD |
+| SqueezeNet1-0 | ImageNet | 58.09% / 80.42% | 12.56% / 29.92% | 21.71% / 44.74% |
+| SqueezeNet1-1 | ImageNet | 58.18% / 80.62% | 4.01% / 12.19% | 15.50% / 35.25% |
 
 
 ### Codewalk Through
