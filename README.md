@@ -38,7 +38,7 @@ and then the model is re-trained for a small number of epochs.
 | VGG13 | ImageNet | 69.93% / 89.25% | 60.34% / 82.56% | 68.09% / 88.22% |
 | VGG13-bn | ImageNet | 71.59% / 90.37% | 45.92% / 70.38% | 57.97% / 81.83% |
 | VGG16 | ImageNet | 71.59% / 90.38% | 65.25% / 86.30% | TBD |
-| VGG16-bn | ImageNet | 73.36% / 91.52% | 56.30% / 79.77% | TBD |
+| VGG16-bn | ImageNet | 73.36% / 91.52% | 56.30% / 79.77% | 71.98% / 90.81% |
 | VGG19 | ImageNet | 72.38% / 90.88% | 66.61% / 87.21% | 69.91%	/ 89.46% |
 | VGG19-bn | ImageNet | 74.22% / 91.84% | 58.96% / 82.02% | TBD | 
 | AlexNet | ImageNet | 56.52% / 79.07% | 42.99% / 67.40% | 48.81% / 73.39% |
