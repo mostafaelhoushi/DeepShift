@@ -26,10 +26,21 @@ from torchsummary import summary
 import copy
 
 from convert_to_shift import convert_to_shift, count_layer_type
+import customized_models
 
-model_names = sorted(name for name in models.__dict__
+default_model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
+
+customized_models_names = sorted(name for name in customized_models.__dict__
+    if name.islower() and not name.startswith("__")
+    and callable(customized_models.__dict__[name]))
+
+for name in customized_models.__dict__:
+    if name.islower() and not name.startswith("__") and callable(customized_models.__dict__[name]):
+        models.__dict__[name] = customized_models.__dict__[name]
+
+model_names = default_model_names + customized_models_names
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
