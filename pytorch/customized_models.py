@@ -10,11 +10,13 @@ import torch
 import torch.nn as nn
 import math
 
+from collections import OrderedDict
+
 __all__ = ['mobilenetv1', 'mobilenetv2']
 
 class MobileNetV1(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(MobileNetV1, self).__init__()
 
         def conv_bn(inp, oup, stride):
             return nn.Sequential(
@@ -194,7 +196,17 @@ def mobilenetv1(**kwargs):
     model = MobileNetV1(**kwargs)
 
     if pretrained is not None and pretrained == True:
-        model.load_state_dict(torch.load("./models/imagenet/original_pretrained_models/mobilenet_v1_sgd_rmsprop_69.526.tar"))
+        saved_checkpoint = torch.load("./models/imagenet/original_pretrained_models/mobilenet_v1_sgd_rmsprop_69.526.tar")
+        state_dict = saved_checkpoint["state_dict"]
+        
+        # create new OrderedDict that does not contain module.
+        new_state_dict = OrderedDict()
+        for k, v in state_dict.items():
+            name = k[7:] # remove module.
+            new_state_dict[name] = v
+        
+        # load params
+        model.load_state_dict(new_state_dict)	
 
     return model
 
