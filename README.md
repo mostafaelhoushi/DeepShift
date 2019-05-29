@@ -43,7 +43,7 @@ and then the model is re-trained for a small number of epochs.
 | VGG19-bn | ImageNet | 74.22% / 91.84% | 58.96% / 82.02% | 72.87% / 91.25% | 
 | AlexNet | ImageNet | 56.52% / 79.07% | 42.99% / 67.40% | 48.81% / 73.39% |
 | DenseNet121 | ImageNet | 74.43% / 91.97% | 46.40% / 71.95% | 70.41% / 89.93% |
-| DenseNet161 | ImageNet | 77.14% / 93.56% | 61.97% / 84.64% | TBD |
+| DenseNet161 | ImageNet | 77.14% / 93.56% | 61.97% / 84.64% | 73.34% / 91.55% |
 | DenseNet169 | ImageNet | 75.60% / 92.81% | 39.24% / 63.93% | 72.84% / 91.28% |
 | DenseNet201 | ImageNet | 76.90% / 93.37% | 51.84% / 75.83% | 73.83% / 91.80% |
 | ResNet18 | ImageNet | 69.76% / 89.08% | 41.53% / 67.29% | 65.81% / 86.88% |
