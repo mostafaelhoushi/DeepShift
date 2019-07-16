@@ -89,7 +89,7 @@ git config lfs.url http://ptlab01.huawei.com:31337/
 ```
 4. Create virtual environment: 
 ```
-virtualenv venv
+virtualenv venv --python=/usr/bin/python3.6 --prompt="(DeepShift) "
 ```
 5. (Needs to be done every time you run code) Source the environment:
 ```
