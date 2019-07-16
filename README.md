@@ -74,37 +74,42 @@ So we need to:
 - Investigate different methods or hyperparameter tuning to enhance the accuracy results.
 
 ### Running the Code
-1. Clone the repo:
+1. Clone the repo along with the model files that exist on the LFS server:
 ```
-git clone http://rnd-gitlab-ca-y.huawei.com/mindspore/deepshift/ DeepShift
+git -c lfs.url=http://ptlab01.huawei.com:31337/ clone git@rnd-gitlab-ca.huawei.com:Do4AI/DeepShift.git
 ```
+git will prompt interactively for the username and password with which to access ptlab01.huawei.com.
 2. Change directory
 ```
 cd DeepShift
 ```
-3. Create virtual environment: 
+3. Save the LFS URL in the clone's settings:
+```
+git config lfs.url http://ptlab01.huawei.com:31337/
+```
+4. Create virtual environment: 
 ```
 virtualenv venv
 ```
-4. (Needs to be done every time you run code) Source the environment:
+5. (Needs to be done every time you run code) Source the environment:
 ```
 source venv/bin/activate
 ```
-5. Install required packages and build the spfpm package for fixed point
+6. Install required packages and build the spfpm package for fixed point
 ```
 pip install -r requirements.txt
 cd spfpm
 make
 ```
-6. cd into `keras` directroy:
+7. cd into `keras` directroy:
 ```
 cd keras
 ```
-7. Run the MNIST test:
+8. Run the MNIST test:
 ```
 python mnist_deepshift.py
 ```
-8. Run the ResNet test. You can check for various options to pass:
+9. Run the ResNet test. You can check for various options to pass:
 ```
 python cifar10_resshift.py --help
 ```
