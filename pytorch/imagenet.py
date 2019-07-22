@@ -50,6 +50,8 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet18)')
+parser.add_argument('--model', default='', type=str, metavar='MODEL_PATH',
+                    help='path to model file to load both its architecture and weights (default: none)')
 parser.add_argument('-s', '--shift_depth', type=int, default=0,
                     help='how many layers to convert to shift')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -65,14 +67,18 @@ parser.add_argument('-b', '--batch-size', default=256, type=int,
                          'using Data Parallel or Distributed Data Parallel')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
+parser.add_argument('--lr-schedule', dest='lr_schedule', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
+                    help='using learning rate schedule')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
+parser.add_argument('--opt-ckpt', default='', type=str, metavar='OPT_PATH',
+                    help='path to checkpoint file to load optimizer state (default: none)')
 parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
+parser.add_argument('--resume', default='', type=str, metavar='CHECKPOINT_PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='only evaluate model on validation set')
@@ -159,7 +165,18 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    if args.pretrained:
+    if args.model:
+        if args.arch or args.pretrained:
+            print("WARNING: Ignoring arguments \"arch\" and \"pretrained\" when creating model...")
+        model = None
+        saved_checkpoint = torch.load(args.model)
+        if isinstance(saved_checkpoint, nn.Module):
+            model = saved_checkpoint
+        elif "model" in saved_checkpoint:
+            model = saved_checkpoint["model"]
+        else:
+            raise Exception("Unable to load model from " + args.model)    
+    elif args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
         model = models.__dict__[args.arch](pretrained=True)
     else:
@@ -204,6 +221,21 @@ def main_worker(gpu, ngpus_per_node, args):
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
+    lr_scheduler = None
+    if args.opt_ckpt:
+        print("WARNING: Ignoring arguments \"lr\", \"momentum\", \"weight_decay\", and \"lr_schedule\"")
+
+        opt_ckpt = torch.load(args.opt_ckpt)
+        if 'optimizer' in opt_ckpt:
+            opt_ckpt = opt_ckpt['optimizer']
+        optimizer.load_state_dict(opt_ckpt)
+
+        if 'lr_scheduler' in opt_ckpt:
+            lr_scheduler = opt_ckpt['lr_scheduler']
+
+    if (args.lr_schedule and lr_scheduler is not None):
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                            milestones=[100, 150], last_epoch=args.start_epoch - 1)
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -217,6 +249,8 @@ def main_worker(gpu, ngpus_per_node, args):
                 best_acc1 = best_acc1.to(args.gpu)
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
+            if 'lr_scheduler' in checkpoint:
+                lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
@@ -314,7 +348,10 @@ def main_worker(gpu, ngpus_per_node, args):
             adjust_learning_rate(optimizer, epoch, args)
 
             # train for one epoch
+            print('current lr {:.4e}'.format(optimizer.param_groups[0]['lr']))
             train_epoch_log = train(train_loader, model, criterion, optimizer, epoch, args)
+            if (args.lr_schedule):
+                lr_scheduler.step()
 
             # evaluate on validation set
             val_epoch_log = validate(val_loader, model, criterion, args)
@@ -331,31 +368,34 @@ def main_worker(gpu, ngpus_per_node, args):
 
             if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                     and args.rank % ngpus_per_node == 0):
+                if is_best:
+                    try:
+                        if (args.save_model):
+                            torch.save(model.state_dict(), os.path.join(model_dir, "weights.pth"))
+                            torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pth"))
+                            torch.save(model, os.path.join(model_dir, "model.pth"))
+                    except: 
+                        print("WARNING: Unable to save model.pth")
+                
                 save_checkpoint({
                     'epoch': epoch + 1,
                     'arch': args.arch,
                     'state_dict': model.state_dict(),
                     'best_acc1': best_acc1,
                     'optimizer' : optimizer.state_dict(),
+                    'lr_scheduler' : lr_scheduler,
                 }, is_best, model_dir)
 
-    if (args.save_model):
-        # TODO: Use checkpoint above
-        if (args.print_weights):
-            with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
-                with redirect_stdout(weights_log_file):
-                    # Log model's state_dict
-                    print("Model's state_dict:")
-                    # TODO: Use checkpoint above
-                    for param_tensor in model.state_dict():
-                        print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-                        print(model.state_dict()[param_tensor])
-                        print("")
-
-        # TODO: Use checkpoint above
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
-        torch.save(model, os.path.join(model_dir, "model.pt"))
+    if (args.print_weights):
+        with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
+            with redirect_stdout(weights_log_file):
+                # Log model's state_dict
+                print("Model's state_dict:")
+                # TODO: Use checkpoint above
+                for param_tensor in model.state_dict():
+                    print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+                    print(model.state_dict()[param_tensor])
+                    print("")
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
