@@ -8,6 +8,7 @@ import sys
 import csv
 import distutils
 from contextlib import redirect_stdout
+from collections import OrderedDict
 
 import torch
 import torch.nn as nn
@@ -172,10 +173,13 @@ def main_worker(gpu, ngpus_per_node, args):
         saved_checkpoint = torch.load(args.model)
         if isinstance(saved_checkpoint, nn.Module):
             model = saved_checkpoint
-        elif "model" in saved_checkpoint:
+        elif "model" in saved_checkpoint:   
             model = saved_checkpoint["model"]
         else:
-            raise Exception("Unable to load model from " + args.model)    
+            raise Exception("Unable to load model from " + args.model)   
+
+        if (args.gpu is not None):
+            model.cuda(args.gpu) 
     elif args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
         model = models.__dict__[args.arch](pretrained=True)
@@ -246,10 +250,21 @@ def main_worker(gpu, ngpus_per_node, args):
             best_acc1 = checkpoint['best_acc1']
             if args.gpu is not None:
                 # best_acc1 may be from a checkpoint from a different GPU
-                best_acc1 = best_acc1.to(args.gpu)
-            model.load_state_dict(checkpoint['state_dict'])
+                dummy = 1#best_acc1 = best_acc1.to(args.gpu)
+            try:
+                model.load_state_dict(checkpoint['state_dict'])
+            except:
+                # create new OrderedDict that does not contain module.
+                state_dict = checkpoint['state_dict']
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:] # remove module.
+                    new_state_dict[name] = v
+                
+                # load params
+                model.load_state_dict(new_state_dict)
             optimizer.load_state_dict(checkpoint['optimizer'])
-            if 'lr_scheduler' in checkpoint:
+            if 'lr_scheduler' in checkpoint and checkpoint['lr_scheduler'] is not None:
                 lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))

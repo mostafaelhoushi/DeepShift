@@ -21,14 +21,14 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-import torchvision.models as models
 
 from torchsummary import summary
 import copy
 
 from convert_to_shift import convert_to_shift, count_layer_type
 
-import resnet_cifar10
+import torchvision.models as imagenet_models
+import cifar10_models
 
 '''
 Unfortunately, none of the pytorch repositories with ResNets on CIFAR10 provides an 
@@ -39,14 +39,14 @@ original paper. The purpose of resnet_cifar10 (which has been obtained from http
 is to provide a valid pytorch implementation of ResNet-s for CIFAR10 as described in the original paper. 
 '''
 
-model_names = sorted(name for name in models.__dict__
+imagenet_model_names = sorted(name for name in imagenet_models.__dict__
     if name.islower() and not name.startswith("__")
-    and not name.startswith("resnet")
-    and callable(models.__dict__[name]))
-model_names.extend(sorted(name for name in resnet_cifar10.__dict__
+    and callable(imagenet_models.__dict__[name]))
+cifar10_model_names = sorted(name for name in cifar10_models.__dict__
     if name.islower() and not name.startswith("__")
-                     and name.startswith("resnet")
-                     and callable(resnet_cifar10.__dict__[name])))
+    and callable(cifar10_models.__dict__[name]))
+
+model_names = list(set().union(imagenet_model_names,cifar10_model_names))
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
@@ -54,6 +54,8 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     help='model architecture: ' +
                         ' | '.join(model_names) +
                         ' (default: resnet18)')
+parser.add_argument('--model', default='', type=str, metavar='MODEL_PATH',
+                    help='path to model file to load both its architecture and weights (default: none)')
 parser.add_argument('-s', '--shift_depth', type=int, default=0,
                     help='how many layers to convert to shift')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -153,6 +155,7 @@ def main():
 def main_worker(gpu, ngpus_per_node, args):
     global best_acc1
     args.gpu = gpu
+    num_classes = 10
 
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
@@ -166,47 +169,117 @@ def main_worker(gpu, ngpus_per_node, args):
             args.rank = args.rank * ngpus_per_node + gpu
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
-    # create model
-    if args.arch.startswith("resnet") and args.pretrained != "imagenet":
+    # create or load model
+    if args.model:
+        if args.arch or (args.pretrained and args.pretrained != "none"):
+            print("WARNING: Ignoring arguments \"arch\" and \"pretrained\" when creating model...")
+        model = None
+        saved_checkpoint = torch.load(args.model)
+        print(save_checkpoint)
+        if isinstance(saved_checkpoint, nn.Module):
+            model = saved_checkpoint
+        elif "model" in saved_checkpoint:
+            model = saved_checkpoint["model"]
+        else:
+            raise Exception("Unable to load model from " + args.model)
+
+        if args.gpu is not None:
+            model.to(args.gpu)
+        
+    # TODO: Clean up this code. Create separate function to load each CIFAR10 version of a model. And then load its weights if needed
+    elif args.arch in cifar10_model_names and args.pretrained != "imagenet":
         if args.pretrained == "none": 
-            model = resnet_cifar10.__dict__[args.arch]()
+            model = cifar10_models.__dict__[args.arch]()
         elif args.pretrained == "cifar10":
-            model = resnet_cifar10.__dict__[args.arch]()
-			
-            # original saved file with DataParallel
-            saved_checkpoint = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
-            state_dict = saved_checkpoint["state_dict"]
-			
-            # create new OrderedDict that does not contain module.
-            new_state_dict = OrderedDict()
-            for k, v in state_dict.items():
-                name = k[7:] # remove module.
-                new_state_dict[name] = v
-			
-			# load params
-            model.load_state_dict(new_state_dict)		
+            if args.arch in ["vgg11_bn"]:
+                # TODO: Save "vgg11_bn.th" as state_dict rather than model 
+                model = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
+            else:
+                model = cifar10_models.__dict__[args.arch]()
+                
+                # TODO: move these 2 lines to inside cifar10_models.py
+                saved_checkpoint = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
+                if "state_dict" in saved_checkpoint:
+                    state_dict = saved_checkpoint["state_dict"]
+                else:
+                    state_dict = saved_checkpoint
+                
+                # TODO: change condition to: if original saved file with DataParallel
+                if args.arch.startswith("resnet"):
+                    # create new OrderedDict that does not contain module.
+                    new_state_dict = OrderedDict()
+                    for k, v in state_dict.items():
+                        name = k[7:] # remove module.
+                        new_state_dict[name] = v
+                    
+                    # load params
+                    model.load_state_dict(new_state_dict)
+                else:
+                    model.load_state_dict(state_dict)
         else:
             raise Exception("Currently model {} does not support weights {}".format(args.arch, args.pretrained))
-    else:
+    elif args.arch not in cifar10_model_names:
         if args.pretrained == "none": 
-            model = models.__dict__[args.arch]()
+            model = imagenet_models.__dict__[args.arch]()
         elif args.pretrained == "imagenet":
-            model = models.__dict__[args.arch](pretrained=True)
+            model = imagenet_models.__dict__[args.arch](pretrained=True)
+        elif os.path.exists(args.pretrained):
+            model = imagenet_models.__dict__[args.arch]()
+            state_dict = None
+            
+            saved_checkpoint = torch.load(args.pretrained)
+            if "state_dict" in saved_checkpoint:
+                state_dict = saved_checkpoint["state_dict"]
+            elif "model" in saved_checkpoint:
+                model = saved_checkpoint["model"]
+                state_dict = model.state_dict()
+            else:
+                state_dict = saved_checkpoint
+                        
+            # load params
+            model.load_state_dict(state_dict)
         else:
             raise Exception("Currently model {} does not support weights {}".format(args.arch, args.pretrained))
-			
-    if args.pretrained != "none":
-        if args.freeze:
-            for param in model.parameters():
-                param.requires_grad = False
 
-    if not args.arch.startswith("resnet"):
-        # change FC layer to accomodate dataset labels
-        num_ftrs = model.fc.in_features
-        model.fc = nn.Linear(num_ftrs, 10) # Parameters of newly constructed modules have requires_grad=True by default
+        # Convert architecture to match CIFAR10 output
+
+        # Parameters of newly constructed modules have requires_grad=True by default
         # TODO: Check https://pytorch.org/tutorials/beginner/finetuning_torchvision_models_tutorial.html to handle different models
+        if args.arch.startswith("resnet"):
+            # TODO: handle if model came from imagenet or cifar10
+            # change FC layer to accomodate dataset labels
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs, num_classes)
+        elif args.arch == "alexnet":
+            num_ftrs = model.classifier[6].in_features
+            model.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        elif args.arch == "vgg11_bn":
+            num_ftrs = model.classifier[6].in_features
+            model.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        elif args.arch == "vgg16":
+            num_ftrs = model.classifier[6].in_features
+            model.classifier[6] = nn.Linear(num_ftrs,num_classes)
+        elif args.arch == "squeezenet1_0":
+            model.classifier[1] = nn.Conv2d(512, num_classes, kernel_size=(1,1), stride=(1,1))
+            model.num_classes = num_classes
+        elif args.arch == "densenet121":
+            num_ftrs = model.classifier.in_features
+            model.classifier = nn.Linear(num_ftrs, num_classes)
+        elif args.arch == "inception_v3":
+            # Handle the auxilary net
+            num_ftrs = model.AuxLogits.fc.in_features
+            model.AuxLogits.fc = nn.Linear(num_ftrs, num_classes)
+            # Handle the primary net
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs,num_classes)
+        else:
+            raise ValueError("Unfortunately ", args.arch, " is not yet supported for CIFAR10")
 
-	# convert layers to shift
+    #TODO: add option for finetune vs. feature extraction that only work if pretrained weights are imagenet    
+    if args.freeze and args.pretrained != "none":
+        for param in model.parameters():
+            param.requires_grad = False
+
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, convert_weights = (args.pretrained != "none"))
 
@@ -222,6 +295,7 @@ def main_worker(gpu, ngpus_per_node, args):
             # ourselves based on the total number of GPUs we have
             args.batch_size = int(args.batch_size / ngpus_per_node)
             args.workers = int(args.workers / ngpus_per_node)
+            #TODO: Allow args.gpu to be a list of IDs
             model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         else:
             model.cuda()
@@ -233,7 +307,7 @@ def main_worker(gpu, ngpus_per_node, args):
         model = model.cuda(args.gpu)
     else:
         # DataParallel will divide and allocate batch_size to all available GPUs
-        if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
+        if (args.arch.startswith('alexnet') or args.arch.startswith('vgg')) and args.pretrained != "cifar10":
             model.features = torch.nn.DataParallel(model.features)
             model.cuda()
         else:
@@ -277,6 +351,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
     model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
+    if (args.gpu is not None):
+        model_tmp_copy.cuda(args.gpu)
     summary(model_tmp_copy, input_size=(3, 32, 32))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
