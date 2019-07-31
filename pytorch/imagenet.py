@@ -258,7 +258,13 @@ def main_worker(gpu, ngpus_per_node, args):
                 state_dict = checkpoint['state_dict']
                 new_state_dict = OrderedDict()
                 for k, v in state_dict.items():
-                    name = k[7:] # remove module.
+                    if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
+                        if (k.startswith("features")):
+                            name = k[0:9] + k[9+7:] # remove "module" after features
+                        else:
+                            name = k
+                    else:
+                        name = k[7:] # remove "module" at beginning of name
                     new_state_dict[name] = v
                 
                 # load params
