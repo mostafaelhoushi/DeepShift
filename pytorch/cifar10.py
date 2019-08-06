@@ -174,7 +174,10 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.arch or (args.pretrained and args.pretrained != "none"):
             print("WARNING: Ignoring arguments \"arch\" and \"pretrained\" when creating model...")
         model = None
-        saved_checkpoint = torch.load(args.model)
+        try:
+            saved_checkpoint = torch.load(args.model)
+        except:
+            saved_checkpoint = torch.load(args.model, encoding="latin")
         print(save_checkpoint)
         if isinstance(saved_checkpoint, nn.Module):
             model = saved_checkpoint
@@ -390,8 +393,8 @@ def main_worker(gpu, ngpus_per_node, args):
     data_dir = "~/pytorch_datasets"
     os.makedirs(model_dir, exist_ok=True)
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.4914, 0.4822, 0.4465],
+                                     std=[0.2023, 0.1994, 0.2010])
 
     train_dataset = datasets.CIFAR10(
         root=data_dir,
