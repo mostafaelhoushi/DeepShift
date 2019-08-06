@@ -420,6 +420,8 @@ def main_worker(gpu, ngpus_per_node, args):
             root=data_dir, 
             train=False, 
             transform=transforms.Compose([
+#                transforms.Resize([36,36]),
+#                transforms.CenterCrop([32,32]),
                 transforms.ToTensor(),
                 normalize,
         ])),
