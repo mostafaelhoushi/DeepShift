@@ -282,7 +282,6 @@ def main_worker(gpu, ngpus_per_node, args):
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
     model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
     summary(model_tmp_copy, input_size=(3, 224, 224))
-    print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     # name model sub-directory "shift_all" if all layers are converted to shift layers
     conv2d_layers_count = count_layer_type(model, nn.Conv2d)
@@ -310,7 +309,6 @@ def main_worker(gpu, ngpus_per_node, args):
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
                 summary(model_tmp_copy, input_size=(3, 224, 224))
-                print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     del model_tmp_copy # to save memory
 

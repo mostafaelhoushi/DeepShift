@@ -27,12 +27,30 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
                 summary[m_key]["output_shape"][0] = batch_size
 
             params = 0
+            params_bits = 0
+            # TODO: handle batchnorm params
             if hasattr(module, "weight") and hasattr(module.weight, "size"):
-                params += torch.prod(torch.LongTensor(list(module.weight.size())))
+                weight_params = torch.prod(torch.LongTensor(list(module.weight.size()))) 
+                params += weight_params
+                params_bits += weight_params * 32
+
                 summary[m_key]["trainable"] = module.weight.requires_grad
+            if hasattr(module, "shift") and hasattr(module.shift, "size"):
+                assert(hasattr(module, "sign"))
+                assert(hasattr(module.sign, "size"))
+                assert(module.shift.size() == module.sign.size())
+
+                shift_params = torch.prod(torch.LongTensor(list(module.shift.size())))
+                params += shift_params
+                params_bits += shift_params * 5
+
+                summary[m_key]["trainable"] = module.shift.requires_grad
             if hasattr(module, "bias") and hasattr(module.bias, "size"):
-                params += torch.prod(torch.LongTensor(list(module.bias.size())))
+                bias_params = torch.prod(torch.LongTensor(list(module.bias.size())))
+                params += bias_params
+                params_bits += bias_params * 32
             summary[m_key]["nb_params"] = params
+            summary[m_key]["bits_params"] = params_bits
 
         if (
             not isinstance(module, nn.Sequential)
@@ -80,6 +98,7 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
     print(line_new)
     print("================================================================")
     total_params = 0
+    total_params_bits = 0
     total_output = 0
     trainable_params = 0
     for layer in summary:
@@ -90,6 +109,7 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
             "{0:,}".format(summary[layer]["nb_params"]),
         )
         total_params += summary[layer]["nb_params"]
+        total_params_bits += summary[layer]["bits_params"]
         total_output += np.prod(summary[layer]["output_shape"])
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
@@ -99,7 +119,7 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
     # assume 4 bytes/number (float on cuda).
     total_input_size = abs(np.prod(input_size) * batch_size * 4. / (1024 ** 2.))
     total_output_size = abs(2. * total_output * 4. / (1024 ** 2.))  # x2 for gradients
-    total_params_size = abs(total_params.numpy() * 4. / (1024 ** 2.))
+    total_params_size = abs(total_params_bits.numpy() / (8. * (1024 ** 2.)))
     total_size = total_params_size + total_output_size + total_input_size
 
     print("================================================================")
