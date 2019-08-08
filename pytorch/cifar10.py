@@ -45,8 +45,11 @@ imagenet_model_names = sorted(name for name in imagenet_models.__dict__
 cifar10_model_names = sorted(name for name in cifar10_models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(cifar10_models.__dict__[name]))
+# TODO: Add those pretrained models in the directory "original_pretrained_models" to cifar10_models.py script
+cifar10_model_existing_th_files = [".".join(f.split(".")[:-1]) for f in os.listdir("./models/cifar10/original_pretrained_models/") ]
+cifar10_model_names = list(set().union(cifar10_model_names,cifar10_model_existing_th_files))
 
-model_names = list(set().union(imagenet_model_names,cifar10_model_names))
+model_names = sorted(list(set().union(imagenet_model_names,cifar10_model_names)))
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
@@ -194,8 +197,8 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.pretrained == "none": 
             model = cifar10_models.__dict__[args.arch]()
         elif args.pretrained == "cifar10":
-            if args.arch in ["vgg11_bn"]:
-                # TODO: Save "vgg11_bn.th" as state_dict rather than model 
+            if args.arch in ["vgg11_bn", "densenet40"]:
+                # TODO: Save "vgg11_bn.th" and "densenet40.th" as state_dict rather than model 
                 model = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
             else:
                 model = cifar10_models.__dict__[args.arch]()
