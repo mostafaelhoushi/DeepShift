@@ -197,12 +197,9 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.pretrained == "none": 
             model = cifar10_models.__dict__[args.arch]()
         elif args.pretrained == "cifar10":
-            if args.arch in ["vgg11_bn", "densenet40"]:
-                # TODO: Save "vgg11_bn.th" and "densenet40.th" as state_dict rather than model 
-                model = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
-            else:
+            try:
                 model = cifar10_models.__dict__[args.arch]()
-                
+
                 # TODO: move these 2 lines to inside cifar10_models.py
                 saved_checkpoint = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
                 if "state_dict" in saved_checkpoint:
@@ -222,6 +219,9 @@ def main_worker(gpu, ngpus_per_node, args):
                     model.load_state_dict(new_state_dict)
                 else:
                     model.load_state_dict(state_dict)
+            except:
+                # TODO: Save "vgg11_bn.th", "densenet40.th"m "resnet164.th" and other models as code and state_dict rather than model 
+                model = torch.load("./models/cifar10/original_pretrained_models/" + args.arch + ".th")
         else:
             raise Exception("Currently model {} does not support weights {}".format(args.arch, args.pretrained))
     elif args.arch not in cifar10_model_names:
