@@ -49,6 +49,14 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
                 bias_params = torch.prod(torch.LongTensor(list(module.bias.size())))
                 params += bias_params
                 params_bits += bias_params * 32
+            if hasattr(module, "running_mean") and hasattr(module.running_mean, "size") and hasattr(module, "track_running_stats") and module.track_running_stats:
+                running_mean_params = torch.prod(torch.LongTensor(list(module.running_mean.size())))
+                params += running_mean_params
+                params_bits += running_mean_params * 32
+            if hasattr(module, "running_var") and hasattr(module.running_var, "size") and hasattr(module, "track_running_stats") and module.track_running_stats:
+                running_var_params = torch.prod(torch.LongTensor(list(module.running_var.size()))) 
+                params += running_var_params
+                params_bits += running_var_params * 32
             summary[m_key]["nb_params"] = params
             summary[m_key]["bits_params"] = params_bits
 
