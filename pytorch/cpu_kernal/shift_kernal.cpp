@@ -9,25 +9,35 @@ using namespace std;
     torch::Tensor sign ,
     torch::Tensor bias)
 {
-
-    torch::Tensor output = torch::zeros({input.size(0),shift.size(1)}, torch::dtype(torch::kInt32));
+    cout<<"batch: "<<input.size(0)<<endl;
+    cout<<"input feature: "<<input.size(1)<<endl;
+    cout<<"shift input feature: "<<shift.size(0)<<endl;
+    cout<<"shift output feature: "<<shift.size(1)<<endl;
+    torch::Tensor output = torch::zeros({input.size(0),shift.size(0)}, torch::dtype(torch::kInt32));
      for( int batch = 0 ;  batch < input.size(0); batch++){
-        for(int output_feature = 0 ; output_feature < shift.size(1); output_feature++){
+        for(int output_feature = 0 ; output_feature < shift.size(0); output_feature++){
             for(int input_feature = 0; input_feature <input.size(1);input_feature++){
-                auto s = shift[input_feature][output_feature].item<int8_t>();
+                // cout<<"0"<<endl;
+                auto s = shift[output_feature][input_feature].item<int8_t>();
+                // cout<<"1"<<endl;
                 auto y = output[batch][output_feature].item<int32_t>();
+                // cout<<"2"<<endl;
                 auto x = input[batch][input_feature].item<int32_t>();
-                if(sign[input_feature][output_feature].item<bool>()){
+                // cout<<"3"<<endl;
+                if(sign[output_feature][input_feature].item<bool>()){
                     y -= (x << s);
                 }
                 else{
                     y += (x << s);
                 }
                 output[batch][output_feature] = y;
+                // cout<<"4"<<endl;
             }
             auto b = bias[output_feature].item<int32_t>();
+            // cout<<"5"<<endl;
             output[batch][output_feature] += b;
-        }
+            cout<<"6"<<endl;
+        }   
      }
    
     return output;
