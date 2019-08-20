@@ -82,6 +82,7 @@ class LinearShift(nn.Module):
     def forward(self, input):
         if self.check_grad is False:
             input.data=round_to_fixed(input.data)
+            self.bias.data=round_to_fixed(self.bias.data)
         input_ = input
         input_.data = input.data * (2 ** 16)
 
@@ -94,16 +95,14 @@ class LinearShift(nn.Module):
             self.sign.org=self.sign.data.clone()
         self.sign.data=self.sign.org.round()
 
-        #weight = (2 ** self.shift) * ( (-1) ** self.sign )
-        #return F.linear(input, weight, self.bias)
+        # weight = (2 ** self.shift) * ( (-1) ** self.sign )
+        # return F.linear(input, weight, self.bias)
         nn = shift_kernal.linear_kernal(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),self.bias.detach().numpy())
-        # print(np.shape(nn))
+
         out = torch.FloatTensor(nn)
-        # print(out)
+
         out.data = out.data / (2**16)
-        # print(out)
-        # print(out.size())
-        # exit()
+
         return out 
 
     def extra_repr(self):
