@@ -2,29 +2,92 @@
 #include <iostream>
 #include <pybind11/pybind11.h>
 #include <vector>
+#include <ctime>
+// #include <omp.h>
 using namespace std;
- torch::Tensor linear_kernal(
-    torch::Tensor input,
-    torch::Tensor shift,
-    torch::Tensor sign ,
-    torch::Tensor bias)
+//  torch::Tensor linear_kernal(
+//     torch::Tensor input,
+//     torch::Tensor shift,
+//     torch::Tensor sign ,
+//     torch::Tensor bias)
+// {
+//     cout<<"batch: "<<input.size(0)<<endl;
+//     cout<<"input feature: "<<input.size(1)<<endl;
+//     cout<<"shift input feature: "<<shift.size(0)<<endl;
+//     cout<<"shift output feature: "<<shift.size(1)<<endl;
+//     std::clock_t start;
+//     double duration;
+//     // start = std::clock();
+//     torch::Tensor output = torch::zeros({input.size(0),shift.size(0)}, torch::dtype(torch::kInt32));
+//     // #pragma omp parallel num_threads(20)
+//      for( int batch = 0 ;  batch < input.size(0); batch++){
+//          cout<<"batch: "<<batch<<endl;
+//          start = std::clock();
+//         for(int output_feature = 0 ; output_feature < shift.size(0); output_feature++){
+//             for(int input_feature = 0; input_feature <input.size(1);input_feature++){
+//                 // cout<<"0"<<endl;
+//                 auto s = shift[output_feature][input_feature].item<int8_t>();
+//                 // cout<<"1"<<endl;
+//                 auto y = output[batch][output_feature].item<int32_t>();
+//                 // cout<<"2"<<endl;
+//                 auto x = input[batch][input_feature].item<int32_t>();
+//                 // cout<<"3"<<endl;
+//                 if(sign[output_feature][input_feature].item<bool>()){
+//                     y -= (x << s);
+//                 }
+//                 else{
+//                     y += (x << s);
+//                 }
+//                 output[batch][output_feature] = y;
+//                 // cout<<"4"<<endl;
+//             }
+//             auto b = bias[output_feature].item<int32_t>();
+//             // cout<<"5"<<endl;
+//             output[batch][output_feature] += b;
+//             // cout<<"6"<<endl;
+//         }
+//         duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+
+//         std::cout<<"One batch use "<< duration <<'\n';
+   
+//      }
+//     // std::cout<<"Finish one call"<<std::endl;
+//     // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+
+//     // std::cout<<"One call use "<< duration <<'\n';
+//     return output;
+// }   
+
+vector<vector<int32_t>> linear_kernal(
+    vector<vector<int32_t>> input,
+    vector<vector<int8_t>> shift,
+    vector<vector<int32_t>> sign ,
+    vector<int32_t> bias)
 {
-    cout<<"batch: "<<input.size(0)<<endl;
-    cout<<"input feature: "<<input.size(1)<<endl;
-    cout<<"shift input feature: "<<shift.size(0)<<endl;
-    cout<<"shift output feature: "<<shift.size(1)<<endl;
-    torch::Tensor output = torch::zeros({input.size(0),shift.size(0)}, torch::dtype(torch::kInt32));
-     for( int batch = 0 ;  batch < input.size(0); batch++){
-        for(int output_feature = 0 ; output_feature < shift.size(0); output_feature++){
-            for(int input_feature = 0; input_feature <input.size(1);input_feature++){
+    // cout<<"batch: "<<input.size()<<endl;
+    // cout<<"input feature: "<<input[0].size()<<endl;
+    // cout<<"shift output feature: "<<shift.size()<<endl;
+    // cout<<"shift input feature: "<<shift[0].size()<<endl;
+    // std::clock_t start;
+    // double duration;
+    // start = std::clock();
+   
+    vector<int32_t> n(shift.size(), 0); 
+    vector<vector<int32_t>> output(input.size(), n);
+    // #pragma omp parallel num_threads(20)
+     for( unsigned int  batch = 0 ;  batch < input.size(); batch++){
+        //  cout<<"batch: "<<batch<<endl;
+        //  start = std::clock();
+        for(unsigned int output_feature = 0 ; output_feature < shift.size(); output_feature++){
+            for(unsigned int input_feature = 0; input_feature <input[0].size();input_feature++){
                 // cout<<"0"<<endl;
-                auto s = shift[output_feature][input_feature].item<int8_t>();
+                auto s = shift[output_feature][input_feature];
                 // cout<<"1"<<endl;
-                auto y = output[batch][output_feature].item<int32_t>();
+                auto y = output[batch][output_feature];
                 // cout<<"2"<<endl;
-                auto x = input[batch][input_feature].item<int32_t>();
+                auto x = input[batch][input_feature];
                 // cout<<"3"<<endl;
-                if(sign[output_feature][input_feature].item<bool>()){
+                if(sign[output_feature][input_feature]){
                     y -= (x << s);
                 }
                 else{
@@ -33,13 +96,20 @@ using namespace std;
                 output[batch][output_feature] = y;
                 // cout<<"4"<<endl;
             }
-            auto b = bias[output_feature].item<int32_t>();
+            auto b = bias[output_feature];
             // cout<<"5"<<endl;
             output[batch][output_feature] += b;
-            cout<<"6"<<endl;
-        }   
-     }
+            // cout<<"6"<<endl;
+        }
+        // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+
+        // std::cout<<"One batch use "<< duration <<'\n';
    
+     }
+    // std::cout<<"Finish one call"<<std::endl;
+    // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+
+    // std::cout<<"One call use "<< duration <<'\n';
     return output;
 }   
 

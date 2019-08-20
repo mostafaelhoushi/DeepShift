@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
-
+import shift_kernal
 import math
 import numpy as np
 
@@ -82,7 +82,10 @@ class LinearShift(nn.Module):
     def forward(self, input):
         if self.check_grad is False:
             input.data=round_to_fixed(input.data)
+        input_ = input
+        input_.data = input.data * (2 ** 16)
 
+        input_ = input_.int()
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
         self.shift.data=self.shift.org.round()
@@ -91,9 +94,17 @@ class LinearShift(nn.Module):
             self.sign.org=self.sign.data.clone()
         self.sign.data=self.sign.org.round()
 
-        weight = (2 ** self.shift) * ( (-1) ** self.sign )
-        return F.linear(input, weight, self.bias)
-        
+        #weight = (2 ** self.shift) * ( (-1) ** self.sign )
+        #return F.linear(input, weight, self.bias)
+        nn = shift_kernal.linear_kernal(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),self.bias.detach().numpy())
+        # print(np.shape(nn))
+        out = torch.FloatTensor(nn)
+        # print(out)
+        out.data = out.data / (2**16)
+        # print(out)
+        # print(out.size())
+        # exit()
+        return out 
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -112,8 +123,8 @@ from torch.autograd import gradcheck
 data = torch.randn(20,20,dtype=torch.double,requires_grad=True)
 weight = torch.randn(30,20,dtype=torch.double,requires_grad=True)
 input = (data, weight)
-test = gradcheck(linear_shift, data, eps=1e-6, atol=1e-4)
-print("gradcheck result for linear_shift: ", test)
+# test = gradcheck(linear_shift, data, eps=1e-6, atol=1e-4)
+# print("gradcheck result for linear_shift: ", test)
 
 
 class _ConvNdShift(nn.Module):
