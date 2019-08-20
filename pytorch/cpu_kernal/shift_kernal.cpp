@@ -3,8 +3,10 @@
 #include <pybind11/pybind11.h>
 #include <vector>
 #include <ctime>
+#include <thread>
 // #include <omp.h>
 using namespace std;
+#define MAX_THREAD 2
 //  torch::Tensor linear_kernal(
 //     torch::Tensor input,
 //     torch::Tensor shift,
@@ -57,36 +59,23 @@ using namespace std;
 //     // std::cout<<"One call use "<< duration <<'\n';
 //     return output;
 // }   
-
-vector<vector<int32_t>> linear_kernal(
-    vector<vector<int32_t>> input,
-    vector<vector<int8_t>> shift,
-    vector<vector<int32_t>> sign ,
-    vector<int32_t> bias)
+void stub(
+    vector<vector<int32_t>>& input,
+    vector<vector<int8_t>>& shift,
+    vector<vector<int32_t>>& sign ,
+    vector<int32_t>& bias,
+    unsigned int start, 
+    unsigned int end,
+    unsigned int idx,
+    vector<vector<int32_t>>& output)
 {
-    // cout<<"batch: "<<input.size()<<endl;
-    // cout<<"input feature: "<<input[0].size()<<endl;
-    // cout<<"shift output feature: "<<shift.size()<<endl;
-    // cout<<"shift input feature: "<<shift[0].size()<<endl;
-    // std::clock_t start;
-    // double duration;
-    // start = std::clock();
-   
-    vector<int32_t> n(shift.size(), 0); 
-    vector<vector<int32_t>> output(input.size(), n);
-    // #pragma omp parallel num_threads(20)
-     for( unsigned int  batch = 0 ;  batch < input.size(); batch++){
-        //  cout<<"batch: "<<batch<<endl;
-        //  start = std::clock();
-        for(unsigned int output_feature = 0 ; output_feature < shift.size(); output_feature++){
+    
+    for(unsigned int  batch = 0 ;  batch < input.size(); batch++    ){
+        for(unsigned int output_feature = start ; output_feature < end; output_feature++){
             for(unsigned int input_feature = 0; input_feature <input[0].size();input_feature++){
-                // cout<<"0"<<endl;
                 auto s = shift[output_feature][input_feature];
-                // cout<<"1"<<endl;
                 auto y = output[batch][output_feature];
-                // cout<<"2"<<endl;
                 auto x = input[batch][input_feature];
-                // cout<<"3"<<endl;
                 if(sign[output_feature][input_feature]){
                     y -= (x << s);
                 }
@@ -94,24 +83,113 @@ vector<vector<int32_t>> linear_kernal(
                     y += (x << s);
                 }
                 output[batch][output_feature] = y;
-                // cout<<"4"<<endl;
             }
             auto b = bias[output_feature];
-            // cout<<"5"<<endl;
             output[batch][output_feature] += b;
-            // cout<<"6"<<endl;
+            
         }
-        // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+    }
+    
+}
 
-        // std::cout<<"One batch use "<< duration <<'\n';
+vector<vector<int32_t>> linear_kernal(
+    vector<vector<int32_t>>& input,
+    vector<vector<int8_t>>& shift,
+    vector<vector<int32_t>>& sign ,
+    vector<int32_t>& bias)
+{
+    cout<<"batch: "<<input.size()<<endl;
+    cout<<"input feature: "<<input[0].size()<<endl;
+    cout<<"shift output feature: "<<shift.size()<<endl;
+    cout<<"shift input feature: "<<shift[0].size()<<endl;
+    // std::clock_t start;
+    // double duration;
+    // start = std::clock();
    
-     }
+    vector<int32_t> n(shift.size(), 0); 
+    vector<vector<int32_t>> output(input.size(), n);
+
+    //**************************************
+    vector<int32_t> temp(shift.size()/2, 0);
+    vector<vector<int32_t>> vv1(input.size(), temp);
+    vector<vector<int32_t>> vv2(input.size(), temp);
+    vector<thread> tp(MAX_THREAD);
+    int work_load = shift.size() / MAX_THREAD;
+    unsigned int idx = 0 ;
+    tp[idx] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), idx*work_load, (idx + 1)* work_load, idx, std::ref(vv1));
+    idx++;
+    tp[idx] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), idx*work_load, shift.size(), idx, std::ref(vv2));
+    // for( unsigned int i = 0 ; i < MAX_THREAD; i++){
+    //     if(i == MAX_THREAD - 1){
+    //         tp[i] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), i*work_load, (i + 1)* work_load, i, std::ref(output));
+    //     }
+    //     else{
+    //         tp[i] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), i*work_load, shift.size(), i, std::ref(output));
+    //     }
+    // }
+
+    for( unsigned int i = 0 ; i < MAX_THREAD; i++){
+        if(tp[i].joinable()){
+            tp[i].join();
+        }
+    }
+    cout<<"here!!!!!!!!!"<<endl;
+    for(unsigned int i = 0 ; i < vv1.size(); i++){
+        for(unsigned j = 0; j < work_load; j++){
+            output[i][j]= vv1[i][j];
+        }
+    }
+    cout<<"there!!!!!!!!!"<<endl;
+    for(unsigned int i = 0 ; i < vv2.size(); i++){
+        for(unsigned j = 0; j < work_load; j++){
+            output[i][j+work_load]= vv2[i][j];
+        }
+    }
+    cout<<"end!!!!!!!!!"<<endl;
+
+
+    //****************************************
+    // #pragma omp parallel num_threads(10)
+    //  for( unsigned int  batch = 0 ;  batch < input.size(); batch++){
+    //     //  cout<<"batch: "<<batch<<endl;
+    //     //  start = std::clock();
+    //     for(unsigned int output_feature = 0 ; output_feature < shift.size(); output_feature++){
+    //         for(unsigned int input_feature = 0; input_feature <input[0].size();input_feature++){
+    //             // cout<<"0"<<endl;
+    //             auto s = shift[output_feature][input_feature];
+    //             // cout<<"1"<<endl;
+    //             auto y = output[batch][output_feature];
+    //             // cout<<"2"<<endl;
+    //             auto x = input[batch][input_feature];
+    //             // cout<<"3"<<endl;
+    //             if(sign[output_feature][input_feature]){
+    //                 y -= (x << s);
+    //             }
+    //             else{
+    //                 y += (x << s);
+    //             }
+    //             output[batch][output_feature] = y;
+    //             // cout<<"4"<<endl;
+    //         }
+    //         auto b = bias[output_feature];
+    //         // cout<<"5"<<endl;
+    //         output[batch][output_feature] += b;
+    //         // cout<<"6"<<endl;
+    //     }
+    //     // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+
+    //     // std::cout<<"One batch use "<< duration <<'\n';
+   
+    //  }
+
+
     // std::cout<<"Finish one call"<<std::endl;
     // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
 
     // std::cout<<"One call use "<< duration <<'\n';
     return output;
 }   
+
 
 torch::Tensor convolution_kernal(
     torch::Tensor input_,
