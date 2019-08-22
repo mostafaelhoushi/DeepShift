@@ -4,9 +4,10 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
-import shift_kernal
+import shift_kernel
 import math
 import numpy as np
+import time
 
 def round_to_fixed(input, bits=16):
     assert bits >= 1, bits
@@ -104,7 +105,7 @@ class LinearShift(nn.Module):
         # print(input_)
         if self.use_kernel:
           
-            nn = shift_kernal.linear_kernal(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
+            nn = shift_kernel.linear_kernel(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
 
             out = torch.FloatTensor(nn)
 
@@ -120,7 +121,7 @@ class LinearShift(nn.Module):
         # print(without)
 
         # print("\n")
-        # print("kernal is")
+        #
         # print(out)
 
         # exit()
@@ -219,11 +220,12 @@ class _ConvNdShift(nn.Module):
 class Conv2dShift(_ConvNdShift):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros', check_grad=False):
+                 bias=True, padding_mode='zeros', check_grad=False, use_kernel=False):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
+        self.use_kernel = use_kernel
         super(Conv2dShift, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), groups, bias, padding_mode)
@@ -231,6 +233,18 @@ class Conv2dShift(_ConvNdShift):
     #@weak_script_method
     def forward(self, input):
         input.data=round_to_fixed(input.data)
+        self.bias.data=round_to_fixed(self.bias.data)
+        if self.use_kernel:
+            # start = time.time()
+
+            input_ = input
+            input_ = input_ * (2 ** 16)
+            input_ = input_.int()
+            
+            bias_ = self.bias
+            bias_ = bias_ * (2 ** 16)
+            bias_ = bias_.int()
+            # print("process data ", time.time() - start)
 
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
@@ -239,14 +253,40 @@ class Conv2dShift(_ConvNdShift):
         if not hasattr(self.sign,'org'):
             self.sign.org=self.sign.data.clone()
         self.sign.data=self.sign.org.round()
+       
 
-        weight = (2 ** self.shift) * ( (-1) ** self.sign )
+        if self.use_kernel:
+            # start = time.time()
+            input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
+            a = input_.detach().numpy()
+            b = self.shift.detach().numpy()
+            c= self.sign.detach().numpy()
+            d= bias_.detach().numpy()
+            # print("dump use ", time.time() - start)
+            # start = time.time()
+            nn = shift_kernel.convolution_kernel(a, 
+            b,
+            c,
+            d,self.stride, self.padding )
+            # print("one call use ", time.time() - start)
+            # start = time.time()
+            out = torch.FloatTensor(nn)
 
-        if self.padding_mode == 'circular':
-            expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
-                                (self.padding[0] + 1) // 2, self.padding[0] // 2)
-            return F.conv2d(F.pad(input, expanded_padding, mode='circular'),
-                            weight, self.bias, self.stride,
-                            _pair(0), self.dilation, self.groups)
-        return F.conv2d(input, weight, self.bias, self.stride,
-                        self.padding, self.dilation, self.groups)
+            out = out / (2**16)
+            # print("process output ", time.time() - start)
+            # print(out.size())
+            # exit()/
+            return out
+
+        else:
+            weight = (2 ** self.shift) * ( (-1) ** self.sign )
+            
+            if self.padding_mode == 'circular':
+                expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
+                                    (self.padding[0] + 1) // 2, self.padding[0] // 2)
+                return F.conv2d(F.pad(input, expanded_padding, mode='circular'),
+                                weight, self.bias, self.stride,
+                                _pair(0), self.dilation, self.groups)
+            return F.conv2d(input, weight, self.bias, self.stride,
+                            self.padding, self.dilation, self.groups)
+        

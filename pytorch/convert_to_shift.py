@@ -30,7 +30,7 @@ def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weight
             conv2d = module
             shift_conv2d = shift.Conv2dShift(module.in_channels, module.out_channels, module.kernel_size, module.stride,
                                              module.padding, module.dilation, module.groups,
-                                             module.bias is not None, module.padding_mode) 
+                                             module.bias is not None, module.padding_mode,  use_kernel=use_kernel) 
 
             if convert_weights == True:
                 shift_conv2d.shift.data, shift_conv2d.sign.data = get_shift_and_sign(conv2d.weight)
