@@ -40,13 +40,13 @@ def round_power_of_2(x):
     return x_rounded
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False):
+ 
         super(LinearShift, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-
+        self.use_kernel = use_kernel
         self.check_grad = check_grad
-
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -83,10 +83,16 @@ class LinearShift(nn.Module):
         if self.check_grad is False:
             input.data=round_to_fixed(input.data)
             self.bias.data=round_to_fixed(self.bias.data)
-        input_ = input
-        input_.data = input.data * (2 ** 16)
+        if self.use_kernel:
 
-        input_ = input_.int()
+            input_ = input
+            input_ = input_ * (2 ** 16)
+            input_ = input_.int()
+            
+            bias_ = self.bias
+            bias_ = bias_ * (2 ** 16)
+            bias_ = bias_.int()
+        
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
         self.shift.data=self.shift.org.round()
@@ -94,16 +100,31 @@ class LinearShift(nn.Module):
         if not hasattr(self.sign,'org'):
             self.sign.org=self.sign.data.clone()
         self.sign.data=self.sign.org.round()
+        # print(input)
+        # print(input_)
+        if self.use_kernel:
+          
+            nn = shift_kernal.linear_kernal(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
 
-        # weight = (2 ** self.shift) * ( (-1) ** self.sign )
-        # return F.linear(input, weight, self.bias)
-        nn = shift_kernal.linear_kernal(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),self.bias.detach().numpy())
+            out = torch.FloatTensor(nn)
 
-        out = torch.FloatTensor(nn)
+            out = out / (2**16)
+            return out
+        else:
+          
+            weight = (2 ** self.shift) * ( (-1) ** self.sign )
+            return F.linear(input, weight, self.bias)
+        # print(self.sign)
+        
+        # print("original is")
+        # print(without)
 
-        out.data = out.data / (2**16)
+        # print("\n")
+        # print("kernal is")
+        # print(out)
 
-        return out 
+        # exit()
+        # return out 
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test

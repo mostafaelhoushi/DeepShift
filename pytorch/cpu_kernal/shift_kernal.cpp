@@ -4,6 +4,7 @@
 #include <vector>
 #include <ctime>
 #include <thread>
+#include <mutex>
 #include "ATen/ATen.h"
 
 #include "ATen/NativeFunctions.h"
@@ -11,7 +12,9 @@
 #include <ATen/Parallel.h>
 // #include <omp.h>
 using namespace std;
-#define MAX_THREAD 2
+#define MAX_THREAD 10
+mutex mtx;
+mutex mtx1;
 //  torch::Tensor linear_kernal(
 //     torch::Tensor input,
 //     torch::Tensor shift,
@@ -87,10 +90,14 @@ void stub(
                 else{
                     y += (x << s);
                 }
+                mtx.lock();
                 output[batch][output_feature] = y;
+                mtx.unlock();
             }
             auto b = bias[output_feature];
+            mtx.lock();
             output[batch][output_feature] += b;
+            mtx.unlock();
             
         }
     }
@@ -103,6 +110,12 @@ vector<vector<int32_t>> linear_kernal(
     vector<vector<int32_t>>& sign ,
     vector<int32_t>& bias)
 {
+    // for(auto a :sign){
+    //     for(auto b : a){
+    //         cout<<b<<" ";
+    //     }
+    //     cout<<endl;
+    // }
     // cout<<"batch: "<<input.size()<<endl;
     // cout<<"input feature: "<<input[0].size()<<endl;
     // cout<<"shift output feature: "<<shift.size()<<endl;
@@ -114,23 +127,20 @@ vector<vector<int32_t>> linear_kernal(
     vector<int32_t> n(shift.size(), 0); 
     vector<vector<int32_t>> output(input.size(), n);
 
-    //**************************************
-    // vector<int32_t> temp1(shift.size()/2, 0);
-    // vector<int32_t> temp2(shift.size()/2, 0);
-    // vector<vector<int32_t>> vv1(input.size(), temp1);
-    // vector<vector<int32_t>> vv2(input.size(), temp2);
+    // //**************************************
+    // // vector<int32_t> temp1(shift.size()/MAX_THREAD, 0);
+    // // vector<int32_t> temp2(shift.size()/MAX_THREAD, 0);
+    // // vector<vector<int32_t>> vv1(input.size(), temp1);
+    // // vector<vector<int32_t>> vv2(input.size(), temp1);
     // vector<thread> tp(MAX_THREAD);
     // int work_load = shift.size() / MAX_THREAD;
-    // // unsigned int idx = 0 ;
-    // // tp[idx] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), idx*work_load, (idx + 1)* work_load, idx, std::ref(vv1));
-    // // idx++;
-    // // tp[idx] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), idx*work_load, shift.size(), idx, std::ref(vv2));
+
     // for( unsigned int i = 0 ; i < MAX_THREAD; i++){
-    //     if(i == MAX_THREAD - 1){
-    //         tp[i] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), i*work_load, (i + 1)* work_load, i, std::ref(vv1));
+    //     if(i != MAX_THREAD - 1){
+    //         tp[i] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), i*work_load, (i + 1)* work_load, i, std::ref(output));
     //     }
     //     else{
-    //         tp[i] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), i*work_load, shift.size(), i, std::ref(vv2));
+    //         tp[i] = thread(stub, std::ref(input), std::ref(shift), std::ref(sign), std::ref(bias), i*work_load, shift.size(), i, std::ref(output));
     //     }
     // }
 
@@ -139,29 +149,29 @@ vector<vector<int32_t>> linear_kernal(
     //         tp[i].join();
     //     }
     // }
-    // cout<<"here!!!!!!!!!"<<endl;
-    // for(unsigned int i = 0 ; i < vv1.size(); i++){
-    //     for(unsigned j = 0; j < work_load; j++){
-    //         output.at(i).at(j)= vv1.at(i).at(j);
-    //     }
-    // }
-    // cout<<"there!!!!!!!!!"<<endl;
-    // for(unsigned int i = 0 ; i < vv2.size(); i++){
-    //     for(unsigned j = 0; j < work_load; j++){
-    //         output.at(i).at(j+work_load)= vv2.at(i).at(j);
-    //     }
-    // }
-    // cout<<"end!!!!!!!!!"<<endl;
-    // cout<<vv1.size()<<endl;
-    // cout<<vv1[0].size()<<endl;
-    // cout<<vv2.size()<<endl;
-    // cout<<vv2[0].size()<<endl;
-    // cout<<work_load<<endl;
+    // // cout<<"here!!!!!!!!!"<<endl;
+    // // for(unsigned int i = 0 ; i < vv1.size(); i++){
+    // //     for(int j = 0; j < work_load; j++){
+    // //         output.at(i).at(j)= vv1.at(i).at(j);
+    // //     }
+    // // }
+    // // cout<<"there!!!!!!!!!"<<endl;
+    // // for(unsigned int i = 0 ; i < vv2.size(); i++){
+    // //     for(int j = 0; j < work_load; j++){
+    // //         output.at(i).at(j+work_load)= vv2.at(i).at(j);
+    // //     }
+    // // }
+    // // cout<<"end!!!!!!!!!"<<endl;
+    // // cout<<vv1.size()<<endl;
+    // // cout<<vv1[0].size()<<endl;
+    // // cout<<vv2.size()<<endl;
+    // // cout<<vv2[0].size()<<endl;
+    // // cout<<work_load<<endl;
 
 
     //****************************************
     // #pragma omp parallel num_threads(10)
-    at::parallel_for(0, input.size(), 0, [&](int64_t start, int64_t end){
+    at::parallel_for(0, input.size(), 10, [&](int64_t start, int64_t end){
     //  for( unsigned int  batch = 0 ;  batch < input.size(); batch++){
         for( auto batch = start ;  batch < end; batch++){
         //  cout<<"batch: "<<batch<<endl;
@@ -175,13 +185,25 @@ vector<vector<int32_t>> linear_kernal(
                 // cout<<"2"<<endl;
                 auto x = input[batch][input_feature];
                 // cout<<"3"<<endl;
-                if(sign[output_feature][input_feature]){
+                if((bool)sign[output_feature][input_feature] && s >=0 ){
                     y -= (x << s);
                 }
-                else{
+                else if(!(bool)sign[output_feature][input_feature] && s >=0){
                     y += (x << s);
                 }
+                else if((bool)sign[output_feature][input_feature] && s <0){
+                    y -= (x >> (-s));
+                }
+                else{
+                    y += (x >> (-s));
+                }
                 output[batch][output_feature] = y;
+                // if(batch == 0 && output_feature == 0){
+                //     cout<<"data: "<<x;
+                //     cout<<"  shift: "<<(int32_t)s;
+                //     cout<<"  sign: "<<sign[output_feature][input_feature];
+                //     cout<<" output: "<<y<<endl;
+                // }
                 // cout<<"4"<<endl;
             }
             auto b = bias[output_feature];
