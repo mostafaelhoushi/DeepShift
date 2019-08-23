@@ -66,6 +66,9 @@ parser.add_argument('-b', '--batch-size', default=256, type=int,
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
+parser.add_argument('-bm', '--batch-multiplier', default=1, type=int,
+                    help='how many batches to repeat before updating parameter. '
+                         'effective batch size is batch-size * batch-multuplier')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--lr-schedule', dest='lr_schedule', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
@@ -429,6 +432,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     # switch to train mode
     model.train()
 
+    sub_batch_count = args.batch_multiplier
     end = time.time()
     for i, (input, target) in enumerate(train_loader):
         # measure data loading time
@@ -440,7 +444,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         # compute output
         output = model(input)
-        loss = criterion(output, target)
+        loss = criterion(output, target) / args.batch_multiplier
+        loss.backward()
 
         # measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
@@ -448,10 +453,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         top1.update(acc1[0], input.size(0))
         top5.update(acc5[0], input.size(0))
 
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        if sub_batch_count == 0:
+            # compute gradient and do SGD step
+            optimizer.step()
+            optimizer.zero_grad()
+
+            sub_batch_count = args.batch_multiplier
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -459,6 +466,8 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.print_freq == 0:
             progress.print(i)
+
+        sub_batch_count -= 1
     
     return (losses.avg, top1.avg.cpu().numpy(), top5.avg.cpu().numpy(), batch_time.avg)
 
