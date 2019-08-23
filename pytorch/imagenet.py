@@ -519,6 +519,9 @@ def save_checkpoint(state, is_best, dir_path, filename='checkpoint.pth.tar'):
     if is_best:
         shutil.copyfile(os.path.join(dir_path, filename), os.path.join(dir_path, 'model_best.pth.tar'))
 
+    if (state['epoch']-1)%10 == 0:
+        shutil.copyfile(os.path.join(dir_path, filename), os.path.join(dir_path, 'checkpoint_' + str(state['epoch']-1) + '.pth.tar'))    
+
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
