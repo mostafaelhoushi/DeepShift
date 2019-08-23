@@ -350,20 +350,22 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
+        start_log_time = time.time()
         val_log = validate(val_loader, model, criterion, args)
         val_log = [val_log]
 
         with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
             test_log_csv = csv.writer(test_log_file)
-            test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
-            test_log_csv.writerows(val_log)
+            test_log_csv.writerow(['test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time', 'cumulative_time'])
+            test_log_csv.writerows(val_log + [(time.time() - start_log_time,)])
     else:
         train_log = []
 
         with open(os.path.join(model_dir, "train_log.csv"), "w") as train_log_file:
             train_log_csv = csv.writer(train_log_file)
-            train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_top5_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time'])
+            train_log_csv.writerow(['epoch', 'train_loss', 'train_top1_acc', 'train_top5_acc', 'train_time', 'test_loss', 'test_top1_acc', 'test_top5_acc', 'test_time', 'cumulative_time'])
 
+        start_log_time = time.time()
         for epoch in range(args.start_epoch, args.epochs):
             if args.distributed:
                 train_sampler.set_epoch(epoch)
@@ -382,7 +384,7 @@ def main_worker(gpu, ngpus_per_node, args):
             # append to log
             with open(os.path.join(model_dir, "train_log.csv"), "a") as train_log_file:
                 train_log_csv = csv.writer(train_log_file)
-                train_log_csv.writerow(((epoch,) + train_epoch_log + val_epoch_log)) 
+                train_log_csv.writerow(((epoch,) + train_epoch_log + val_epoch_log + (time.time() - start_log_time,))) 
 
             # remember best acc@1 and save checkpoint
             is_best = acc1 > best_acc1
@@ -506,6 +508,7 @@ def validate(val_loader, model, criterion, args):
 
             if i % args.print_freq == 0:
                 progress.print(i)
+
 
         # TODO: this should also be done with the ProgressMeter
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
