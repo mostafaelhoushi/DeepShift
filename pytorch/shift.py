@@ -5,6 +5,7 @@ from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
 import shift_kernel
+import shift_cuda_kernel
 import math
 import numpy as np
 import time
@@ -81,6 +82,7 @@ class LinearShift(nn.Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
+    
         if self.check_grad is False:
             input.data=round_to_fixed(input.data)
             self.bias.data=round_to_fixed(self.bias.data)
@@ -93,6 +95,14 @@ class LinearShift(nn.Module):
             bias_ = self.bias
             bias_ = bias_ * (2 ** 16)
             bias_ = bias_.int()
+
+            shift_ = self.shift
+            shift_ = shift_.int()
+
+            sign_ = self.sign
+            sign_ = sign_.int()
+
+
         
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
@@ -103,13 +113,15 @@ class LinearShift(nn.Module):
         self.sign.data=self.sign.org.round()
         # print(input)
         # print(input_)
+    
         if self.use_kernel:
-          
-            nn = shift_kernel.linear_kernel(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
+            
+            nn = shift_cuda_kernel.linear_shift(input_, shift_, sign_, bias_)
 
-            out = torch.FloatTensor(nn)
+            out = nn.float()
 
             out = out / (2**16)
+            
             return out
         else:
           

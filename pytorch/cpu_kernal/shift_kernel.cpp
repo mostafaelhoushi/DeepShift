@@ -197,7 +197,7 @@ vector<vector<int32_t>> linear_kernel(
                     y += (x >> (-s));
                 }
                 output[batch][output_feature] = y;
-                // if(batch == 0 && output_feature == 0){
+                // if(batch == 0 && output_feature == 1){
                 //     cout<<"data: "<<x;
                 //     cout<<"  shift: "<<(int32_t)s;
                 //     cout<<"  sign: "<<sign[output_feature][input_feature];
