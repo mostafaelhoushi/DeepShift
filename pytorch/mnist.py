@@ -14,7 +14,7 @@ from torchsummary import summary
 
 import shift
 from convert_to_shift import convert_to_shift
-CUDA_VISIBLE_DEVICE=""
+
 class LinearMNIST(nn.Module):
     def __init__(self):
         super(LinearMNIST, self).__init__()
@@ -158,7 +158,7 @@ def main():
         mdoel = model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
 
     if args.shift_depth > 0:
-       
+       z
         model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel)
         model = model.to(device)
 

@@ -10,6 +10,103 @@ import math
 import numpy as np
 import time
 
+def get_im2col_indices(x_shape, field_height, field_width, padding=1, stride=1):
+
+    # First figure out what the size of the output should be
+
+    N, C, H, W = x_shape
+
+    assert (H + 2 * padding - field_height) % stride == 0
+
+    assert (W + 2 * padding - field_height) % stride == 0
+
+    out_height = (H + 2 * padding - field_height) / stride + 1
+
+    out_width = (W + 2 * padding - field_width) / stride + 1
+
+    out_width = int(out_width)
+    out_height = int(out_height)
+
+    i0 = np.repeat(np.arange(field_height), field_width)
+
+    i0 = np.tile(i0, C)
+
+    i1 = stride * np.repeat(np.arange(out_height), out_width)
+
+    j0 = np.tile(np.arange(field_width), field_height * C)
+
+    j1 = stride * np.tile(np.arange(out_width), out_height)
+
+    i = i0.reshape(-1, 1) + i1.reshape(1, -1)
+
+    j = j0.reshape(-1, 1) + j1.reshape(1, -1)
+
+
+
+    k = np.repeat(np.arange(C), field_height * field_width).reshape(-1, 1)
+
+
+
+    return (k, i, j)
+
+
+
+
+
+def im2col_indices(x, field_height, field_width, padding=1, stride=1):
+
+    """ An implementation of im2col based on some fancy indexing """
+
+    # Zero-pad the input
+
+    p = padding
+
+    x_padded = np.pad(x, ((0, 0), (0, 0), (p, p), (p, p)), mode='constant')
+
+
+
+    k, i, j = get_im2col_indices(x.shape, field_height, field_width, padding,
+
+                                stride)
+
+
+
+    cols = x_padded[:, k, i, j]
+
+    C = x.shape[1]
+
+    cols = cols.transpose(1, 2, 0).reshape(field_height * field_width * C, -1)
+
+    return cols.transpose()
+
+def col2im_indices(cols, x_shape, field_height=3, field_width=3, padding=1,
+
+                   stride=1):
+
+    """ An implementation of col2im based on fancy indexing and np.add.at """
+
+    N, C, H, W = x_shape
+
+    H_padded, W_padded = H + 2 * padding, W + 2 * padding
+    print(cols.dtype)
+    x_padded = np.zeros((N, C, H_padded, W_padded), int)
+
+    k, i, j = get_im2col_indices(x_shape, field_height, field_width, padding,
+
+                                stride)
+
+    cols_reshaped = cols.reshape(C * field_height * field_width, -1, N)
+
+    cols_reshaped = cols_reshaped.transpose(2, 0, 1)
+
+    np.add.at(x_padded, (slice(None), k, i, j), cols_reshaped)
+
+    if padding == 0:
+
+        return x_padded
+
+    return x_padded[:, :, padding:-padding, padding:-padding]
+
 def round_to_fixed(input, bits=16):
     assert bits >= 1, bits
     if bits == 1:
@@ -127,17 +224,7 @@ class LinearShift(nn.Module):
           
             weight = (2 ** self.shift) * ( (-1) ** self.sign )
             return F.linear(input, weight, self.bias)
-        # print(self.sign)
-        
-        # print("original is")
-        # print(without)
-
-        # print("\n")
-        #
-        # print(out)
-
-        # exit()
-        # return out 
+       
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -256,6 +343,12 @@ class Conv2dShift(_ConvNdShift):
             bias_ = self.bias
             bias_ = bias_ * (2 ** 16)
             bias_ = bias_.int()
+            shift_ = self.shift
+            shift_ = shift_.int()
+
+            sign_ = self.sign
+            sign_ = sign_.int()
+
             # print("process data ", time.time() - start)
 
         if not hasattr(self.shift,'org'):
@@ -268,26 +361,53 @@ class Conv2dShift(_ConvNdShift):
        
 
         if self.use_kernel:
-            # start = time.time()
-            input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
-            a = input_.detach().numpy()
-            b = self.shift.detach().numpy()
-            c= self.sign.detach().numpy()
-            d= bias_.detach().numpy()
-            # print("dump use ", time.time() - start)
-            # start = time.time()
-            nn = shift_kernel.convolution_kernel(a, 
-            b,
-            c,
-            d,self.stride, self.padding )
-            # print("one call use ", time.time() - start)
-            # start = time.time()
-            out = torch.FloatTensor(nn)
+            # test = torch.randint(0,10,(1,2,5,5))
+            
+            # ss = torch.randint(0,10,(2,2,3,3))
 
+            # col1 = im2col_indices(test,3,3,0,1 )
+            # print(test)
+            # print(col1)
+            # print(col1.shape)
+
+            # col2 = im2col_indices(ss,3,3,0,1 )
+            # print(ss)
+            # print(col2)
+            # print(col2.shape)
+
+            # col3 = torch.randint(0,10,(9,2),dtype =torch.int32 )
+            # im = col2im_indices(col3.numpy(), test.shape,3,3,0,1)
+            
+            # print(col3)
+            # print(im)
+            # print(im.shape)
+            # col = shift_cuda_kernel.conv2d_shift(test.to('cuda'), ss.to('cuda'), sign_, bias_,[1],[1])
+            
+            input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
+            # print(input_)
+            # print(input_.size())
+            nn = shift_cuda_kernel.conv2d_shift(input_, shift_, sign_, bias_, self.stride, self.padding )
+            # print(out)
+            # print(out.size())
+            # exit()
+            # input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
+            # a = input_.detach().numpy()
+            # b = self.shift.detach().numpy()
+            # c= self.sign.detach().numpy()
+            # d= bias_.detach().numpy()
+            # # print("dump use ", time.time() - start)
+            # # start = time.time()
+            # nn = shift_kernel.convolution_kernel(a, 
+            # b,
+            # c,
+            # d,self.stride, self.padding )
+            # # print("one call use ", time.time() - start)
+            # # start = time.time()
+            # out = torch.FloatTensor(nn)
+            out = nn.float()
             out = out / (2**16)
             # print("process output ", time.time() - start)
-            # print(out.size())
-            # exit()/
+            
             return out
 
         else:
