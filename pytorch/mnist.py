@@ -158,8 +158,7 @@ def main():
         mdoel = model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
 
     if args.shift_depth > 0:
-       z
-        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda)
         model = model.to(device)
 
     loss_fn = F.cross_entropy # F.nll_loss

@@ -139,13 +139,14 @@ def round_power_of_2(x):
     return x_rounded
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False,use_cuda =True):
  
         super(LinearShift, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.use_kernel = use_kernel
         self.check_grad = check_grad
+        self.use_cuda = use_cuda
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -212,14 +213,24 @@ class LinearShift(nn.Module):
         # print(input_)
     
         if self.use_kernel:
-            
-            nn = shift_cuda_kernel.linear_shift(input_, shift_, sign_, bias_)
+            if(self.use_cuda):
+                print("cuda kernel")
+                nn = shift_cuda_kernel.linear_shift(input_, shift_, sign_, bias_)
 
-            out = nn.float()
+                out = nn.float()
 
-            out = out / (2**16)
-            
-            return out
+                out = out / (2**16)
+                
+                return out
+            else:
+                nn = shift_kernel.linear_kernel(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
+
+                out = torch.FloatTensor(nn)
+
+                out = out / (2**16)
+                return out
+
+
         else:
           
             weight = (2 ** self.shift) * ( (-1) ** self.sign )
@@ -319,12 +330,13 @@ class _ConvNdShift(nn.Module):
 class Conv2dShift(_ConvNdShift):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros', check_grad=False, use_kernel=False):
+                 bias=True, padding_mode='zeros', check_grad=False, use_kernel=False,use_cuda =True):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
         self.use_kernel = use_kernel
+        self.use_cuda = use_cuda
         super(Conv2dShift, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), groups, bias, padding_mode)
@@ -361,54 +373,22 @@ class Conv2dShift(_ConvNdShift):
        
 
         if self.use_kernel:
-            # test = torch.randint(0,10,(1,2,5,5))
-            
-            # ss = torch.randint(0,10,(2,2,3,3))
-
-            # col1 = im2col_indices(test,3,3,0,1 )
-            # print(test)
-            # print(col1)
-            # print(col1.shape)
-
-            # col2 = im2col_indices(ss,3,3,0,1 )
-            # print(ss)
-            # print(col2)
-            # print(col2.shape)
-
-            # col3 = torch.randint(0,10,(9,2),dtype =torch.int32 )
-            # im = col2im_indices(col3.numpy(), test.shape,3,3,0,1)
-            
-            # print(col3)
-            # print(im)
-            # print(im.shape)
-            # col = shift_cuda_kernel.conv2d_shift(test.to('cuda'), ss.to('cuda'), sign_, bias_,[1],[1])
-            
-            input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
-            # print(input_)
-            # print(input_.size())
-            nn = shift_cuda_kernel.conv2d_shift(input_, shift_, sign_, bias_, self.stride, self.padding )
-            # print(out)
-            # print(out.size())
-            # exit()
-            # input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
-            # a = input_.detach().numpy()
-            # b = self.shift.detach().numpy()
-            # c= self.sign.detach().numpy()
-            # d= bias_.detach().numpy()
-            # # print("dump use ", time.time() - start)
-            # # start = time.time()
-            # nn = shift_kernel.convolution_kernel(a, 
-            # b,
-            # c,
-            # d,self.stride, self.padding )
-            # # print("one call use ", time.time() - start)
-            # # start = time.time()
-            # out = torch.FloatTensor(nn)
-            out = nn.float()
-            out = out / (2**16)
-            # print("process output ", time.time() - start)
-            
-            return out
+            if(self.use_cuda):
+                print("cuda kernel")
+                input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
+                nn = shift_cuda_kernel.conv2d_shift(input_, shift_, sign_, bias_, self.stride, self.padding )
+                out = nn.float()
+                out = out / (2**16)
+                return out
+            else:
+                input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
+                nn = shift_kernel.convolution_kernel(input_.detach().numpy(), 
+                    self.shift.detach().numpy(),
+                    self.sign.detach().numpy(),
+                    bias_.detach().numpy(),self.stride, self.padding)
+                out = torch.FloatTensor(nn)
+                out = out / (2**16)
+                return out
 
         else:
             weight = (2 ** self.shift) * ( (-1) ** self.sign )
