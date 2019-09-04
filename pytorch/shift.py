@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
+from convert_to_shift import get_shift_and_sign
 
 import math
 import numpy as np
@@ -49,11 +50,17 @@ class LinearShift(nn.Module):
             # optional ones can be None if you want.
             self.register_parameter('bias', None)
 
-        # Not a very smart way to initialize weights
-        self.shift.data.uniform_(-10, -1) # (-0.1, 0.1)
-        self.sign.data.uniform_(-1, 0) # (-0.1, 0.1)
-        if bias is not None:
-            self.bias.data.uniform_(-0.1, 0.1)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        weights = torch.zeros_like(self.shift)
+        init.kaiming_uniform_(weights, a=math.sqrt(5))
+        self.shift.data, self.sign.data = get_shift_and_sign(weights)
+        
+        if self.bias is not None:
+            fan_in, _ = init._calculate_fan_in_and_fan_out(self.shift)
+            bound = 1 / math.sqrt(fan_in)
+            init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
         if self.check_grad is False:
@@ -137,8 +144,10 @@ class _ConvNdShift(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        init.uniform_(self.shift, a=-10, b=-1) # init.kaiming_uniform_(self.shift, a=math.sqrt(5))
-        init.uniform_(self.sign, a=-1, b=-0)
+        weights = torch.zeros_like(self.shift)
+        init.kaiming_uniform_(weights, a=math.sqrt(5))
+        self.shift.data, self.sign.data = get_shift_and_sign(weights)
+
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.shift)
             bound = 1 / math.sqrt(fan_in)
