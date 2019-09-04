@@ -6,7 +6,6 @@ import shift
 from shift import round_to_fixed, get_shift_and_sign
 
 def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weights=False, use_kernel=False,use_cuda=True):
-
     conversion_count = 0
     for name, module in reversed(model._modules.items()):
         if len(list(module.children())) > 0:

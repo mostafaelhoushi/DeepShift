@@ -216,6 +216,124 @@ input = (data, weight)
 # test = gradcheck(linear_shift, data, eps=1e-6, atol=1e-4)
 # print("gradcheck result for linear_shift: ", test)
 
+# Inherit from Function
+class Conv2dShiftFunction(Function):
+
+    # Note that both forward and backward are @staticmethods
+    @staticmethod
+    # bias is an optional argument
+    def forward(ctx, input, shift, sign, bias=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False):
+        fraction_bits = 16
+        integer_bits = 16
+
+        if use_kernel:
+            input_  = input.clone()
+            input_.data  = input_.data * (2 ** fraction_bits)
+            input_ = input_.int()
+
+            if bias is not None:
+                bias_ = bias.clone()
+                bias_.data = bias_.data * (2 ** fraction_bits)
+                bias_.data = bias_.data.int()
+        else:
+            input.data=round_to_fixed(input.data, fraction_bits, integer_bits)
+            if bias is not None:
+                bias.data=round_to_fixed(bias.data, fraction_bits, integer_bits)
+ 
+        if not hasattr(shift,'org'):
+            shift.org = shift.data.clone()
+        shift.data = shift.org.round()
+
+        if not hasattr(sign,'org'):
+            sign.org = sign.data.clone()
+        sign.data = sign.org.round()
+
+        if use_kernel:
+            if(use_cuda):
+                sign.data = sign.data.int()
+                shift.data = shift.data.int()
+                if padding_mode == 'circular':
+                    print('circular')
+                if len(padding) == 2:
+                    padding = (padding[0], padding[0], padding[1], padding[1])
+                else:
+                    padding = padding
+                input_ = F.pad(input = input_, pad = padding, mode = 'constant', value = 0)
+                if len(stride) == 1:
+                    strides_h = stride[0]
+                    strides_w = stride[0]
+                else: 
+                    strides_h = stride[0]
+                    strides_w = stride[1]
+                out_height = int((input_.size(2) - shift.size(2)) / strides_h +1)
+                out_width = int((input_.size(3) - shift.size(3)) / strides_w +1)
+                out = torch.zeros([input_.size(0), shift.size(0), out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
+
+                if bias is not None:
+                    shift_cuda_kernel.conv2d_shift(input_, shift, sign, bias_, out, stride, padding)
+                else:
+                    temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                    shift_cuda_kernel.conv2d_shift(input_, shift, sign, temp, out, stride, padding)
+                out = out.float()
+                out = out / (2**fraction_bits)
+                
+                shift.data = shift.data.float()
+                sign.data = sign.data.float()
+
+            else:
+                print("conv cpu kernel")
+                input_ = F.pad(input = input_, pad = padding, mode = 'constant', value = 0)
+                out = shift_kernel.convolution_kernel(input_.detach().numpy(), 
+                    shift.detach().numpy(),
+                    sign.detach().numpy(),
+                    bias_.detach().numpy(), stride, padding)
+                out = torch.FloatTensor(out)
+                out = out / (2**fraction_bits)
+        else:
+            v = 2**shift.round() * (-1)**sign.round()
+            out = F.conv2d(input, v, bias, stride, padding, dilation, groups)
+
+        shift.data = shift.org 
+        sign.data = sign.org
+
+        ctx.save_for_backward(input, shift, sign, bias)
+        ctx.stride = stride
+        ctx.padding = padding 
+        ctx.dilation = dilation
+        ctx.groups = groups
+
+        return out
+
+    # This function has only a single output, so it gets only one gradient
+    @staticmethod
+    def backward(ctx, grad_output):
+        # This is a pattern that is very convenient - at the top of backward
+        # unpack saved_tensors and initialize all gradients w.r.t. inputs to
+        # None. Thanks to the fact that additional trailing Nones are
+        # ignored, the return statement is simple even when the function has
+        # optional inputs.
+        input, shift, sign, bias = ctx.saved_tensors
+        stride = ctx.stride
+        padding = ctx.padding 
+        dilation = ctx.dilation
+        groups = ctx.groups
+        grad_input = grad_shift = grad_sign = grad_bias = None
+
+        # These needs_input_grad checks are optional and there only to
+        # improve efficiency. If you want to make your code simpler, you can
+        # skip them. Returning gradients for inputs that don't require it is
+        # not an error.
+        v = 2**shift.round() * (-1)**sign.round()
+        if ctx.needs_input_grad[0]:
+            grad_input = torch.nn.grad.conv2d_input(input.shape, v, grad_output, stride, padding, dilation, groups)
+        if ctx.needs_input_grad[1]:
+            grad_shift = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(2)
+        if ctx.needs_input_grad[2]:
+            grad_shift = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(1)
+        if bias is not None and ctx.needs_input_grad[3]:
+            grad_bias = grad_output.sum(0).squeeze(0)
+
+        return grad_input, grad_shift, grad_sign, grad_bias, None, None, None, None
 
 class _ConvNdShift(nn.Module):
 
@@ -302,87 +420,12 @@ class Conv2dShift(_ConvNdShift):
 
     #@weak_script_method
     def forward(self, input):
-        fraction_bits = 16
-        integer_bits = 16
-        if self.use_kernel:
-            
-            input_  = input.clone()
-            input_.data  = input_.data * (2 ** fraction_bits)
-            input_ = input_.int()
-
-            if self.bias is not None:
-                bias_ = self.bias.clone()
-                bias_.data = bias_.data * (2 ** fraction_bits)
-                bias_.data = bias_.data.int()
-
+        if self.padding_mode == 'circular':
+            expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
+                                (self.padding[0] + 1) // 2, self.padding[0] // 2)
+            return Conv2dShiftFunction.apply(F.pad(input, expanded_padding, mode='circular'),
+                            self.shift, self.sign, self.bias, self.stride,
+                            _pair(0), self.dilation, self.groups)
         else:
-            input.data=round_to_fixed(input.data,fraction_bits, integer_bits)
-            if self.bias is not None:
-                self.bias.data=round_to_fixed(self.bias.data,fraction_bits, integer_bits)
-    
-        if not hasattr(self.shift,'org'):
-            self.shift.org=self.shift.data.clone()
-        self.shift.data=self.shift.org.round()
-
-        if not hasattr(self.sign,'org'):
-            self.sign.org=self.sign.data.clone()
-        self.sign.data=self.sign.org.round()
-       
-
-        if self.use_kernel:
-            if(self.use_cuda):
-                self.sign.data = self.sign.data.int()
-                self.shift.data = self.shift.data.int()
-                if self.padding_mode == 'circular':
-                    print('circular')
-                if len(self.padding) == 2:
-                    padding = (self.padding[0],self.padding[0],self.padding[1],self.padding[1])
-                else:
-                    padding = self.padding
-                input_ = F.pad(input = input_, pad = padding, mode = 'constant', value = 0)
-                if len(self.stride) == 1:
-                    strides_h = self.stride[0]
-                    strides_w = self.stride[0]
-                else: 
-                    strides_h = self.stride[0]
-                    strides_w = self.stride[1]
-                out_height = int((input_.size(2) - self.shift.size(2)) / strides_h +1)
-                out_width = int((input_.size(3) - self.shift.size(3)) / strides_w +1)
-                out = torch.zeros([input_.size(0), self.shift.size(0), out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
-
-                if self.bias is not None:
-                    shift_cuda_kernel.conv2d_shift(input_, self.shift, self.sign, bias_, out, self.stride, self.padding )
-                else:
-                    temp = torch.zeros([self.shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                    shift_cuda_kernel.conv2d_shift(input_, self.shift, self.sign, temp, out, self.stride, self.padding )
-                out = out.float()
-                out = out / (2**fraction_bits)
-                
-                self.shift.data = self.shift.data.float()
-                self.sign.data = self.sign.data.float()
-          
-                return out
-            else:
-                print("conv cpu kernel")
-                input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
-                out = shift_kernel.convolution_kernel(input_.detach().numpy(), 
-                    self.shift.detach().numpy(),
-                    self.sign.detach().numpy(),
-                    bias_.detach().numpy(),self.stride, self.padding)
-                out = torch.FloatTensor(out)
-                out = out / (2**fraction_bits)
-                return out
-
-        else:
-            weight = (2 ** self.shift) * ( (-1) ** self.sign )
-            
-            if self.padding_mode == 'circular':
-                expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
-                                    (self.padding[0] + 1) // 2, self.padding[0] // 2)
-                aa= F.conv2d(F.pad(input, expanded_padding, mode='circular'),
-                                weight, self.bias, self.stride,
-                                _pair(0), self.dilation, self.groups)
-            aa= F.conv2d(input, weight, self.bias, self.stride,
+            return Conv2dShiftFunction.apply(input, self.shift, self.sign, self.bias, self.stride,
                             self.padding, self.dilation, self.groups)
-
-            return aa
