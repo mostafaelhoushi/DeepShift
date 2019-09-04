@@ -105,6 +105,9 @@ class LinearShiftFunction(Function):
             if bias is not None:
                 out += bias.unsqueeze(0).expand_as(output)
 
+        shift.data = shift.org 
+        sign.data = sign.org
+
         ctx.save_for_backward(input, shift, sign, bias)
 
         return out
