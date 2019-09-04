@@ -195,6 +195,12 @@ class LinearShift(nn.Module):
             self.in_features, self.out_features, self.bias is not None
         )
 
+    def state_dict(self, *args, **kwargs):
+        #print("state_dict here overriden")
+        self.shift.data = self.shift.data.round()
+        self.sign.data = self.sign.data.round()
+        return super(LinearShift, self).state_dict(*args, **kwargs)
+
 
 # check gradient of linear_shift
 linear_shift = LinearShift(20, 30, check_grad=True) 
