@@ -46,6 +46,97 @@ def round_power_of_2(x):
     x_rounded = (2.0 ** shift) * sign
     return x_rounded
 
+# Inherit from Function
+class LinearShiftFunction(Function):
+
+    # Note that both forward and backward are @staticmethods
+    @staticmethod
+    # bias is an optional argument
+    def forward(ctx, input, shift, sign, bias=None):
+        fraction_bits = 16
+        integer_bit = 16
+        
+        if use_kernel:   
+            input_ = input.clone()
+            input_.data  = input_.data * (2 ** fraction_bits)
+            input_.data = input_.data.int()
+            
+            if bias is not None:
+                bias_ = self.bias.clone()
+                bias_.data = bias_.data * (2 ** fraction_bits)
+                bias_.data = bias_.data.int()
+        else:
+            if check_grad is False:
+                input.data=round_to_fixed(input.data,fraction_bits, integer_bit)
+                if bias is not None:
+                    bias.data=round_to_fixed(bias.data,fraction_bits, integer_bit)
+        
+        if not hasattr(shift,'org'):
+            shift.org=shift.data.clone()
+        shift.data=shift.org.round()
+
+        if not hasattr(sign,'org'):
+            sign.org=sign.data.clone()
+        sign.data=sign.org.round()     
+    
+        if use_kernel:
+            if(use_cuda):
+                sign.data = sign.data.int()
+                shift.data = shift.data.int()
+            
+                out = torch.zeros([input.size(0),shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                if bias is not None:
+                    shift_cuda_kernel.linear_shift(input_, shift, sign, bias_,out)
+                else:
+                    temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                    shift_cuda_kernel.linear_shift(input_, shift, sign, temp,out)
+                out = out.float()
+                out = out / (2**fraction_bits)
+                
+                shift.data = shift.data.float()
+                sign.data = sign.data.float()
+            else:
+                nn = shift_kernel.linear_kernel(input_.detach().numpy(), shift.detach().numpy(),sign.detach().numpy(),bias_.detach().numpy())
+                out = torch.FloatTensor(nn)
+                out = out / (2**fraction_bits)
+        else:         
+            v = 2**shift.round() * (-1)**sign.round()
+            out = input.mm(v.t())
+            if bias is not None:
+                out += bias.unsqueeze(0).expand_as(output)
+
+        ctx.save_for_backward(input, shift, sign, bias)
+
+        return out
+
+    # This function has only a single output, so it gets only one gradient
+    @staticmethod
+    def backward(ctx, grad_output):
+        # This is a pattern that is very convenient - at the top of backward
+        # unpack saved_tensors and initialize all gradients w.r.t. inputs to
+        # None. Thanks to the fact that additional trailing Nones are
+        # ignored, the return statement is simple even when the function has
+        # optional inputs.
+        input, shift, sign, bias = ctx.saved_tensors
+        grad_input = grad_shift = grad_sign = grad_bias = None
+
+        # These needs_input_grad checks are optional and there only to
+        # improve efficiency. If you want to make your code simpler, you can
+        # skip them. Returning gradients for inputs that don't require it is
+        # not an error.
+        v = 2**shift.round() * (-1)**sign.round()
+        if ctx.needs_input_grad[0]:
+            grad_input = grad_output.mm(v)
+        if ctx.needs_input_grad[1]:
+            grad_shift = grad_output.t().mm(input) * v * math.log(2)
+            #print("grad_shift[0][0]: ", grad_shift[0][0])
+        if ctx.needs_input_grad[2]:
+            grad_sign = grad_output.t().mm(input) * v * math.log(1)
+        if bias is not None and ctx.needs_input_grad[3]:
+            grad_bias = grad_output.sum(0).squeeze(0)
+
+        return grad_input, grad_shift, grad_sign, grad_bias
+
 class LinearShift(nn.Module):
     def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False,use_cuda =True):
  
@@ -62,12 +153,17 @@ class LinearShift(nn.Module):
         # won't be converted when e.g. .cuda() is called. You can use
         # .register_buffer() to register buffers.
         # nn.Parameters require gradients by default.
+        
         if check_grad:
             tensor_constructor = torch.DoubleTensor # double precision required to check grad
         else:
             tensor_constructor = torch.Tensor # In PyTorch torch.Tensor is alias torch.FloatTensor
+
+        # TODO: Use torch.CharTensor for shift and torch.BoolTensor for sign
+        # or have one 32-bit store 8 shift values, and one 32-bit store 32 sign values
         self.shift = nn.Parameter(tensor_constructor(out_features, in_features))
         self.sign = nn.Parameter(tensor_constructor(out_features, in_features))
+
         if bias:
             self.bias = nn.Parameter(tensor_constructor(out_features))
         else:
@@ -78,81 +174,16 @@ class LinearShift(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        weights = torch.zeros_like(self.shift)
-        init.kaiming_uniform_(weights, a=math.sqrt(5))
-        self.shift.data, self.sign.data = get_shift_and_sign(weights)
+        self.shift.data.uniform_(-10, -1) # (-0.1, 0.1)
+        self.sign.data.uniform_(-1, 0) # (-0.1, 0.1)
         
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.shift)
             bound = 1 / math.sqrt(fan_in)
             init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input):   
-        fraction_bits = 16
-        integer_bit = 16
-        
-        
-        if self.use_kernel:
-           
-            input_ = input.clone()
-            input_.data  = input_.data * (2 ** fraction_bits)
-            input_.data = input_.data.int()
-            
-            if self.bias is not None:
-                bias_ = self.bias.clone()
-                bias_.data = bias_.data * (2 ** fraction_bits)
-                bias_.data = bias_.data.int()
-            
-        else:
-            if self.check_grad is False:
-                input.data=round_to_fixed(input.data,fraction_bits, integer_bit)
-                if self.bias is not None:
-                    self.bias.data=round_to_fixed(self.bias.data,fraction_bits, integer_bit)
-
-        
-        if not hasattr(self.shift,'org'):
-            self.shift.org=self.shift.data.clone()
-        self.shift.data=self.shift.org.round()
-
-        if not hasattr(self.sign,'org'):
-            self.sign.org=self.sign.data.clone()
-        self.sign.data=self.sign.org.round()
-       
-    
-        if self.use_kernel:
-            if(self.use_cuda):
-                self.sign.data = self.sign.data.int()
-                self.shift.data = self.shift.data.int()
-            
-                out = torch.zeros([input.size(0),self.shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                # shift_cuda_kernel.linear_shift(input_, shift_, sign_, bias_,out)
-                if self.bias is not None:
-                    shift_cuda_kernel.linear_shift(input_, self.shift, self.sign, bias_,out)
-                else:
-                    temp = torch.zeros([self.shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                    shift_cuda_kernel.linear_shift(input_, self.shift, self.sign, temp,out)
-                out = out.float()
-                out = out / (2**fraction_bits)
-                
-                self.shift.data = self.shift.data.float()
-                self.sign.data = self.sign.data.float()
-
-                return out
-            else:
-                print("linear cpu kernel")
-                nn = shift_kernel.linear_kernel(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
-
-                out = torch.FloatTensor(nn)
-
-                out = out / (2**fraction_bits)
-                return out
-
-
-        else:
-          
-            weight = (2 ** self.shift) * ( (-1) ** self.sign )
-            return F.linear(input, weight, self.bias)
-       
+    def forward(self, input):
+        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias)
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -161,8 +192,10 @@ class LinearShift(nn.Module):
             self.in_features, self.out_features, self.bias is not None
         )
 
+
 # check gradient of linear_shift
-linear_shift = LinearShift(20, 30, check_grad=True) # LinearShiftFunction.apply 
+linear_shift = LinearShift(20, 30, check_grad=True) 
+#linear_shift = LinearShiftFunction.apply 
 
 from torch.autograd import gradcheck
 # gradcheck takes a tuple of tensors as input, check if your gradient
