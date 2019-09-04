@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 
 import shift
+from shift import round_to_fixed, get_shift_and_sign
 
 def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weights=False):
     conversion_count = 0
@@ -37,24 +38,6 @@ def convert_to_shift(model, shift_depth, convert_all_linear=True, convert_weight
             conversion_count += 1
 
     return model, conversion_count
-
-def get_shift_and_sign(x):
-    sign = torch.sign(x)
-    # convert sign to (-1)^sign
-    # i.e., 1 -> 0, -1 -> 1
-    #sign = sign.numpy()
-    sign[sign == 1] = 0
-    sign[sign == -1] = 1
-    
-    x_abs = torch.abs(x)
-    shift = torch.round(torch.log(x_abs) / np.log(2))
-
-    return shift, sign    
-
-def round_power_of_2(x):
-    shift, sign = get_shift_and_sign(x)    
-    x_rounded = (2.0 ** shift) * sign
-    return x_rounded
 
 def count_layer_type(model, layer_type):
     count = 0

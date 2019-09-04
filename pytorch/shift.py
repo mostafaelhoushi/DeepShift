@@ -4,7 +4,6 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
-from convert_to_shift import get_shift_and_sign
 
 import math
 import numpy as np
@@ -21,6 +20,24 @@ def round_to_fixed(input, bits=16):
 
     clipped_value = torch.clamp(rounded, min_val, max_val) * delta
     return clipped_value
+
+def get_shift_and_sign(x):
+    sign = torch.sign(x)
+    # convert sign to (-1)^sign
+    # i.e., 1 -> 0, -1 -> 1
+    #sign = sign.numpy()
+    sign[sign == 1] = 0
+    sign[sign == -1] = 1
+    
+    x_abs = torch.abs(x)
+    shift = torch.round(torch.log(x_abs) / np.log(2))
+
+    return shift, sign    
+
+def round_power_of_2(x):
+    shift, sign = get_shift_and_sign(x)    
+    x_rounded = (2.0 ** shift) * sign
+    return x_rounded
 
 class LinearShift(nn.Module):
     def __init__(self, in_features, out_features, bias=True, check_grad=False):
