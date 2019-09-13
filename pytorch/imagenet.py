@@ -52,6 +52,8 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                         ' (default: resnet18)')
 parser.add_argument('--model', default='', type=str, metavar='MODEL_PATH',
                     help='path to model file to load both its architecture and weights (default: none)')
+parser.add_argument('--weights', default='', type=str, metavar='WEIGHTS_PATH',
+                    help='path to file to load its weights (default: none)')
 parser.add_argument('-s', '--shift_depth', type=int, default=0,
                     help='how many layers to convert to shift')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -190,8 +192,28 @@ def main_worker(gpu, ngpus_per_node, args):
         print("=> creating model '{}'".format(args.arch))
         model = models.__dict__[args.arch]()
 
+    if args.weights:
+        saved_weights = torch.load(args.weights)
+        if isinstance(saved_weights, nn.Module):
+            state_dict = saved_weights.state_dict()
+        elif "state_dict" in saved_weights:
+            state_dict = saved_weights["state_dict"]
+        else:
+            state_dict = saved_weights
+            
+        try:
+            model.load_state_dict(state_dict)
+        except:
+            # create new OrderedDict that does not contain module.
+            new_state_dict = OrderedDict()
+            for k, v in state_dict.items():
+                name = k[7:] # remove module.
+                new_state_dict[name] = v
+                
+            model.load_state_dict(new_state_dict)
+
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained,use_kernel = args.use_kernel)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained or args.weights, use_kernel = args.use_kernel)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
