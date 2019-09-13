@@ -329,9 +329,9 @@ class Conv2dShiftFunction(Function):
         if ctx.needs_input_grad[1]:
             grad_shift = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(2)
         if ctx.needs_input_grad[2]:
-            grad_shift = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(1)
+            grad_sign = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(1)
         if bias is not None and ctx.needs_input_grad[3]:
-            grad_bias = grad_output.sum(0).squeeze(0)
+            grad_bias = grad_output.sum((0,2,3)).squeeze(0)
 
         return grad_input, grad_shift, grad_sign, grad_bias, None, None, None, None
 
