@@ -493,31 +493,34 @@ def main_worker(gpu, ngpus_per_node, args):
 
             if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                     and args.rank % ngpus_per_node == 0):
+                if is_best:
+                    try:
+                        if (args.save_model):
+                            torch.save(model.state_dict(), os.path.join(model_dir, "weights.pth"))
+                            torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pth"))
+                            torch.save(model, os.path.join(model_dir, "model.pth"))
+                    except: 
+                        print("WARNING: Unable to save model.pth")
+                
                 save_checkpoint({
                     'epoch': epoch + 1,
                     'arch': args.arch,
                     'state_dict': model.state_dict(),
                     'best_acc1': best_acc1,
                     'optimizer' : optimizer.state_dict(),
+                    'lr_scheduler' : lr_scheduler,
                 }, is_best, model_dir)
 
-    if (args.save_model):
-        # TODO: Use checkpoint above
-        if (args.print_weights):
-            with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
-                with redirect_stdout(weights_log_file):
-                    # Log model's state_dict
-                    print("Model's state_dict:")
-                    # TODO: Use checkpoint above
-                    for param_tensor in model.state_dict():
-                        print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-                        print(model.state_dict()[param_tensor])
-                        print("")
-
-        # TODO: Use checkpoint above
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
-        torch.save(model, os.path.join(model_dir, "model.pt"))
+    if (args.print_weights):
+        with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
+            with redirect_stdout(weights_log_file):
+                # Log model's state_dict
+                print("Model's state_dict:")
+                # TODO: Use checkpoint above
+                for param_tensor in model.state_dict():
+                    print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+                    print(model.state_dict()[param_tensor])
+                    print("")
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
