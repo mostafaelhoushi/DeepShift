@@ -30,11 +30,6 @@ def round_to_fixed(input, fraction, integer):
 
 def get_shift_and_sign(x):
     sign = torch.sign(x)
-    # convert sign to (-1)^sign
-    # i.e., 1 -> 0, -1 -> 1
-    #sign = sign.numpy()
-    sign[sign == 1] = 0
-    sign[sign == -1] = 1
     
     x_abs = torch.abs(x)
     shift = torch.round(torch.log(x_abs) / np.log(2))
@@ -70,11 +65,12 @@ class LinearShiftFunction(Function):
                 input.data=round_to_fixed(input.data,fraction_bits, integer_bit)
                 if bias is not None:
                     bias.data=round_to_fixed(bias.data,fraction_bits, integer_bit)
-        
+
         if not hasattr(shift,'org'):
             shift.org=shift.data.clone()
         shift.data=shift.org.round()
 
+        sign = sign.clamp(-1,1)
         if not hasattr(sign,'org'):
             sign.org=sign.data.clone()
         sign.data=sign.org.round()     
@@ -100,7 +96,7 @@ class LinearShiftFunction(Function):
                 out = torch.FloatTensor(nn)
                 out = out / (2**fraction_bits)
         else:         
-            v = 2**shift.round() * (-1)**sign.round()
+            v = 2**shift.round() * (-1)**sign.sign()
             out = input.mm(v.t())
             if bias is not None:
                 out += bias.unsqueeze(0).expand_as(output)
@@ -127,14 +123,14 @@ class LinearShiftFunction(Function):
         # improve efficiency. If you want to make your code simpler, you can
         # skip them. Returning gradients for inputs that don't require it is
         # not an error.
-        v = 2**shift.round() * (-1)**sign.round()
+        v = 2**shift.round() * sign.sign()
         if ctx.needs_input_grad[0]:
             grad_input = grad_output.mm(v)
         if ctx.needs_input_grad[1]:
             grad_shift = grad_output.t().mm(input) * v * math.log(2)
             #print("grad_shift[0][0]: ", grad_shift[0][0])
         if ctx.needs_input_grad[2]:
-            grad_sign = grad_output.t().mm(input) * v * math.log(1)
+            grad_sign = grad_output.t().mm(input)
         if bias is not None and ctx.needs_input_grad[3]:
             grad_bias = grad_output.sum(0).squeeze(0)
 
@@ -244,6 +240,7 @@ class Conv2dShiftFunction(Function):
             shift.org = shift.data.clone()
         shift.data = shift.org.round()
 
+        sign = sign.clamp(-1,1)
         if not hasattr(sign,'org'):
             sign.org = sign.data.clone()
         sign.data = sign.org.round()
@@ -290,7 +287,7 @@ class Conv2dShiftFunction(Function):
                 out = torch.FloatTensor(out)
                 out = out / (2**fraction_bits)
         else:
-            v = 2**shift.round() * (-1)**sign.round()
+            v = 2**shift.round() * (-1)**sign.sign()
             out = F.conv2d(input, v, bias, stride, padding, dilation, groups)
 
         shift.data = shift.org 
@@ -323,13 +320,13 @@ class Conv2dShiftFunction(Function):
         # improve efficiency. If you want to make your code simpler, you can
         # skip them. Returning gradients for inputs that don't require it is
         # not an error.
-        v = 2**shift.round() * (-1)**sign.round()
+        v = 2**shift.round() * sign.sign()
         if ctx.needs_input_grad[0]:
             grad_input = torch.nn.grad.conv2d_input(input.shape, v, grad_output, stride, padding, dilation, groups)
         if ctx.needs_input_grad[1]:
             grad_shift = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(2)
         if ctx.needs_input_grad[2]:
-            grad_sign = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(1)
+            grad_sign = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) 
         if bias is not None and ctx.needs_input_grad[3]:
             grad_bias = grad_output.sum((0,2,3)).squeeze(0)
 
