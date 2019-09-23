@@ -23,6 +23,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from torchsummary import summary
+import radam, ranger
 import copy
 
 from convert_to_shift import convert_to_shift, count_layer_type
@@ -247,9 +248,12 @@ def main_worker(gpu, ngpus_per_node, args):
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    #optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    #                            momentum=args.momentum,
+    #                            weight_decay=args.weight_decay)
+    optimizer = ranger.Ranger(model.parameters(), args.lr,
+                              weight_decay=args.weight_decay)
+
     lr_scheduler = None
     if args.opt_ckpt:
         print("WARNING: Ignoring arguments \"lr\", \"momentum\", \"weight_decay\", and \"lr_schedule\"")
