@@ -9,6 +9,7 @@ import csv
 import distutils
 from contextlib import redirect_stdout
 from collections import OrderedDict
+import copy
 
 import torch
 import torch.nn as nn
@@ -23,7 +24,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 from torchsummary import summary
-import copy
+import radam, ranger
 
 from convert_to_shift import convert_to_shift, count_layer_type
 
@@ -344,13 +345,16 @@ def main_worker(gpu, ngpus_per_node, args):
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+
+    #optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    #                            momentum=args.momentum,
+    #                            weight_decay=args.weight_decay)
+    optimizer = ranger.Ranger(model.parameters(), args.lr,
+                              weight_decay=args.weight_decay)
 
     if (args.lr_schedule):
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                            milestones=[100, 150], last_epoch=args.start_epoch - 1)
+                                                            milestones=[80, 120, 160, 180], last_epoch=args.start_epoch - 1)
 
     if args.arch in ['resnet1202', 'resnet110']:
         # for resnet1202 original paper uses lr=0.01 for first 400 minibatches for warm-up
