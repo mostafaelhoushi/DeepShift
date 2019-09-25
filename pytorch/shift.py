@@ -66,6 +66,8 @@ class LinearShiftFunction(Function):
                 if bias is not None:
                     bias.data=round_to_fixed(bias.data,fraction_bits, integer_bit)
 
+        sign = sign.clamp(-1,1)
+
         if not hasattr(shift,'org'):
             shift.org=shift.data.clone()
         shift.data=shift.org.round()
@@ -101,9 +103,6 @@ class LinearShiftFunction(Function):
             if bias is not None:
                 out += bias.unsqueeze(0).expand_as(output)
 
-        shift.data = shift.org 
-        sign.data = sign.org
-
         ctx.save_for_backward(input, shift, sign, bias)
 
         return out
@@ -128,7 +127,6 @@ class LinearShiftFunction(Function):
             grad_input = grad_output.mm(v)
         if ctx.needs_input_grad[1]:
             grad_shift = grad_output.t().mm(input) * v * math.log(2)
-            #print("grad_shift[0][0]: ", grad_shift[0][0])
         if ctx.needs_input_grad[2]:
             grad_sign = grad_output.t().mm(input)
         if bias is not None and ctx.needs_input_grad[3]:
@@ -289,9 +287,6 @@ class Conv2dShiftFunction(Function):
         else:
             v = 2**shift.round() * (-1)**sign.sign()
             out = F.conv2d(input, v, bias, stride, padding, dilation, groups)
-
-        shift.data = shift.org 
-        sign.data = sign.org
 
         ctx.save_for_backward(input, shift, sign, bias)
         ctx.stride = stride
