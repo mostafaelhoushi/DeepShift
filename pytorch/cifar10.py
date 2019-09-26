@@ -70,6 +70,8 @@ parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
+parser.add_argument('-opt', '--optimizer', metavar='OPT', default="SGD", 
+                    help='optimizer algorithm')
 parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N',
                     help='mini-batch size (default: 128), this is the total '
@@ -342,16 +344,29 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             model = torch.nn.DataParallel(model).cuda()
 
-    # define loss function (criterion) and optimizer
+    # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
+    # define optimizer
+    optimizer = None 
+    if(args.optimizer.lower() == "sgd"):
+        optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "adadelta"):
+        optimizer = torch.optim.Adadelta(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "adagrad"):
+        optimizer = torch.optim.Adagrad(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "adam"):
+        optimizer = torch.optim.Adam(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "rmsprop"):
+        optimizer = torch.optim.RMSprop(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "radam"):
+        optimizer = radam.RAdam(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "ranger"):
+        optimizer = ranger.Ranger(model.parameters(), args.lr, weight_decay=args.weight_decay)
+    else:
+        raise ValueError("Optimizer type: ", args.optimizer, " is not supported or known")
 
-    #optimizer = torch.optim.SGD(model.parameters(), args.lr,
-    #                            momentum=args.momentum,
-    #                            weight_decay=args.weight_decay)
-    optimizer = ranger.Ranger(model.parameters(), args.lr,
-                              weight_decay=args.weight_decay)
-
+    # define learning rate schedule
     if (args.lr_schedule):
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
                                                             milestones=[80, 120, 160, 180], last_epoch=args.start_epoch - 1)
