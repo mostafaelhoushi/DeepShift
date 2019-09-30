@@ -4,11 +4,15 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
-import shift_kernel
-import shift_cuda_kernel
 import math
 import numpy as np
 import time
+
+try:
+    import shift_kernel
+    import shift_cuda_kernel
+except:
+    print("Unable to import CPU and/or CUDA bit-wise shift kernels")
 
 def round_to_fixed(input, fraction, integer): 
     assert integer >= 1, integer 

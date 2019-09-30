@@ -1,23 +1,13 @@
 # DeepShift
 ## Towards a Multiplication-Less Neural Network
 
-This is a project that aims to replace multiplications in a neural networks with bitwise shift (and sign change).
+This is a project that aims to replace multiplications in a neural networks with bitwise shift and sign change.
 
 The results below are using PyTorch. Results using Keras are slightly different and its implementation still needs to be finalized.
 
 ### Results So Far
 Converting all `Conv2D` layers to `Conv2DShift` and all `Dense` layers to `DenseShift`.
 
-When converting a convolution layer or fully connected layer to a shifted layer, the following conversion is made to get the shifts that are closest in equivalent to the original weights: 
-```
-[kernel, bias] = original_layer.get_weights()
-shift = log2(round(abs(kernel)))
-sign = sign(kernel)
-sign[sign==1] = 0
-sign[sign==-1] = 1
-shift_layer.set_weights([shift, sign, bias])
-```
-and then the model is re-trained for a small number of epochs.
 
 | Model | Dataset | Original Version | DeepShift Version<br>(Train from Scratch) | DeepShift Version<br>(Convert Original Weights) | DeepShift Version<br>(Convert Original Weights<br>+ Train) 
 |-------| ------- | -------------------------- | ----------------------------- | ----------------------------- | ----------------------------- |
@@ -51,34 +41,18 @@ and then the model is re-trained for a small number of epochs.
 | ResNet50 | ImageNet | 76.13% / 92.86% | 41.30% / 65.10% | 68.42% / 88.66% |
 | ResNet101 | ImageNet | 77.37% / 93.55% | 52.59% / 76.57% | 69.21% / 88.95% |
 | ResNet152 | ImageNet | 78.31% / 94.05% | 46.14% / 69.15% | 75.56% / 92.75% |
-| MobileNetv1 | ImageNet | 69.57% / 89.07% | 0.14% / 0.67% | 60.61% / 83.23% |
 | MobileNetv2 | ImageNet | 71.81% / 90.42% | 0.10% / 0.48% | 63.10% / 85.26% |
 | SqueezeNet1-0 | ImageNet | 58.09% / 80.42% | 12.56% / 29.92% | 21.71% / 44.74% |
 | SqueezeNet1-1 | ImageNet | 58.18% / 80.62% | 4.01% / 12.19% | 15.50% / 35.25% |
 
-
-### Codewalk Through
-* `keras`: directory containing implementation, tests, and saved models using Keras
-    * `shift_layer.py`: definition of `DenseShift` class that inherits from Keras' `Layer` class and modifies it to implement fully connected (a.k.a Dense) layer as multiplications with integer powers of 2 (mathematically equialvent to bitwaise shift) and  integer powers of -1 (mathematically equivalent to sign change or sign keep). 
-    * `convolutional_shift.py`: definition of `Conv2DShift` class that inherits from Keras` `Conv2D` layer to implement convolution as multiplications with integer powers of 2 (mathematically equialvent to bitwaise shift) and  integer powers of -1 (mathematically equivalent to sign change or sign keep).
-    * `mnist_deepshift.py`: example script to classify MNIST dataset using a small fully connected model.
-    * `cifar10_resshift.py`: modify different depth versions of ResNet50 to use shift convolutions instead of multiplication convolutions.
-    * `selected_models`: directory containing saved Keras model files and training results
-
-### TODOs
-Currently, both trainining and inference are actually done by multiplying by a power of 2 and by a power of -1.
-So we need to:
-- Implement the inference on fixed float data using bitwise shift (instead of multiplying by a power of 2) and bitwise XOR (instead of negating), and verify that its speed on CPU will be faster than multiplication.
-- Implement training on fixed float data using bitwaise shift and bitwise XOR, and verify that its speed on CPU will be faster than multiplication.
-- Implement an FPGA prototype to execute bitwise shift and XOR  in parallel.
-- Investigate different methods or hyperparameter tuning to enhance the accuracy results.
-
-### Running the Code
-1. Clone the repo along with the model files that exist on the LFS server:
+### Getting Started
+1. Clone the repo:
 ```
 git -c lfs.url=http://ptlab01.huawei.com:31337/ clone git@rnd-gitlab-ca.huawei.com:Do4AI/DeepShift.git
 ```
+
 git will prompt interactively for the username and password with which to access ptlab01.huawei.com.
+
 2. Change directory
 ```
 cd DeepShift
@@ -87,33 +61,73 @@ cd DeepShift
 ```
 git config lfs.url http://ptlab01.huawei.com:31337/
 ```
-4. Create virtual environment: 
+
+To guarantee that the code works on your machine, we recommend that you create a virtual environment to install the same packages that we used to develop the code.
+
+4. Create virtual environment using Python version 3.5: 
 ```
-virtualenv venv --python=/usr/bin/python3.6 --prompt="(DeepShift) "
+virtualenv venv --python=/usr/bin/python3.5 --prompt="(DeepShift) "
 ```
 5. (Needs to be done every time you run code) Source the environment:
 ```
 source venv/bin/activate
 ```
-6. Install required packages and build the spfpm package for fixed point
+6. Install the required packages
 ```
 pip install -r requirements.txt
-cd spfpm
-make
 ```
-7. cd into `keras` directroy:
+
+
+7. Install our CPU and CUDA kernels that perform matrix multiplication and convolution using bit-wise shifts:
 ```
-cd keras
+cd cpu_kernal
+python setup.py install
+cd ...
+
+cd cuda_kernel
+python setup.py install
+cd ...
 ```
-8. Run the MNIST test:
+
+
+8. cd into `pytorch` directroy:
 ```
-python mnist_deepshift.py
+cd pytorch
 ```
-9. Run the ResNet test. You can check for various options to pass:
-```
-python cifar10_resshift.py --help
-```
-and then run with the script with default options or pass the options you prefer:
-```
-python cifar10_resshift.py
-```
+9. Now you can run the different scripts with different options, e.g.,
+    a) Train a DeepShift simple fully-connected model on the MNIST dataset:
+    ```
+    python mnist.py --shift 3
+    ```
+    b) Train a DeepShift simple convolutional model on the MNIST dataset:
+    ```
+    python mnist.py --type conv --shift 3
+    ```
+    c) Train a DeepShift ResNet20 on the CIFAR10 dataset from scratch:
+    ```
+    python cifar10.py -a resnet20 --pretrained False --shift 1000 
+    ```
+    d) Infer a DeepShift ResNet20 model on the CIFAR10 dataset using converted pretrained weights:
+    ```
+    python cifar10.py -a resnet20 --pretrained True --shift 1000 --evaluate
+    ```
+    e) Train a DeepShift ResNet20 model on the CIFAR10 dataset starting from the original pretrained weights:
+    ```
+    python cifar10.py -a resnet20 --pretrained True --shift 1000
+    ```
+    f) Infer a DeepShift VGG19 model on the Imagenet dataset using converted pretrained weights:
+    ```
+    python imagenet.py -a vgg19 --pretrained True --shift 1000 --evaluate
+    ```
+    g) Train a DeepShift DenseNet121 model on the Imagenet dataset using converted pretrained weights for 10 epochs with learning rate 0.01:
+    ```
+    python imagenet.py -a densenet121 --pretrained True --shift 1000 --epochs 10 --lr 0.01
+    ```
+
+### Codewalk Through
+* `pytorch`: directory containing implementation, tests, and saved models using PyTorch
+    * `shift.py`: definition of `LinearShift` and `ConvShift` ops
+    * `mnist.py`: example script to train and infer on MNIST dataset using simple models in both their original forms and DeepShift version.
+    * `cifar10.py`: example script to train and infer on CIFAR10 dataset using various models in both their original forms and DeepShift version.
+    * `imagenet.py`: example script to train and infer on Imagenet dataset using various models in both their original forms and DeepShift version.
+    * `models`: directory containing saved PyTorch model files and training results
