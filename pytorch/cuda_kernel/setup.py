@@ -7,7 +7,7 @@ setup(
         CUDAExtension('shift_cuda_kernel', [
             'shift_cuda.cpp',
             'shift_cuda_kernel.cu',
-        ])
+        ],extra_compile_args=['-O3'])
     ],
     cmdclass={
         'build_ext': BuildExtension

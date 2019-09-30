@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 #include <ctime>
 #include <vector>
+// #include <ATen/native/cuda/im2col.cuh>
 template <typename scalar_t>
 __global__ void linear_shift_cuda_kernel(
     const scalar_t* __restrict__ input,
@@ -41,15 +42,9 @@ __global__ void linear_shift_cuda_kernel(
     
             }
             output[blockIdx.x * blockDim.x + threadIdx.x]=y;
-            // if(blockIdx.x * blockDim.x + threadIdx.x == 512){
-            //     printf("x: %d, s: %d, sign: %d, y: %d\n", x,s,sign[threadIdx.x * input_features + i],y);
-            //     // printf("iidx_w: %d\n",idx_w);
-            // }
+           
         }
-        // if(blockIdx.x * blockDim.x + threadIdx.x == 513){
-        //     // printf("x: %d, s: %d, sign: %d, y: %d\n", x,s,sign[threadIdx.x * input_features + i],y);
-        //     printf("iidx_w: %d, h: %d\n",idx_w,idx_h);
-        // }
+       
         output[blockIdx.x * blockDim.x + threadIdx.x] += bias[idx_w];
     }
     
@@ -75,16 +70,19 @@ __global__ void conv2d_shift_cuda_kernel(
 {
     
     
-    int idx = blockIdx.y * 1024 + threadIdx.x;
-    // if(idx == 0 && blockIdx.x == 0){
-    //     printf("in kernel\n");
-    // }
+    int xx = blockIdx.x * blockDim.x + threadIdx.x;
+    int yy = blockIdx.y * blockDim.y + threadIdx.y;
+    int idx = yy * gridDim.x * blockDim.x + xx;
+    int batch = blockIdx.y;
+    idx = idx % (gridDim.x * blockDim.x * blockDim.y);
     if(idx < out_height * out_width * oc){
-        int batch = blockIdx.x;
+        
+    
         int out_channel = idx / (out_height * out_width);
         int h = (idx % (out_height * out_width)) / out_width;
         int w = (idx % (out_height * out_width)) % out_width;
-
+        output[w + h * out_width + out_channel * out_width * out_height 
+                                    + batch * oc * out_width * out_height] = 0;
         for(int i = 0; i < filter_height; i++){
             for(int j = 0 ; j < filter_width; j++){
                 for(int k = 0 ; k < input_features; k++){
@@ -95,6 +93,7 @@ __global__ void conv2d_shift_cuda_kernel(
                     // auto y = output[batch][out_channel][h][w];
                     auto y = output[w + h * out_width + out_channel * out_width * out_height 
                                     + batch * oc * out_width * out_height];
+                    
                     // auto x = input[batch][k][i + strides_h * h][j + strides_w * w];
                     auto x = input[j + strides_w * w + (i + strides_h * h) * in_width 
                                     + k * in_width * in_height 
@@ -126,57 +125,147 @@ __global__ void conv2d_shift_cuda_kernel(
 
         output[w + h * out_width + out_channel * out_width * out_height 
                 + batch * oc * out_width * out_height] += bias[out_channel];
-    }
+        }
+    
     
 }
 
-// template <typename scalar_t>
-// __global__ void im2col(
-//     const torch::PackedTensorAccessor<int,4,torch::RestrictPtrTraits,size_t> im,
-//     torch::PackedTensorAccessor<int,3,torch::RestrictPtrTraits,size_t> col,
-//     int filter_height,
-//     int filter_width,
-//     int input_features,
-//     int out_height,
-//     int out_width,
-//     int strides_h,
-//     int strides_w)
-// {
-//     int batch = blockIdx.x;
-//     int idx = blockIdx.y * 1024 + threadIdx.x;
-//     int k = filter_height * filter_width * input_features;
-//     int pitch = out_height * out_width;
-//     int num_pitch = idx / k;
-//     int num_oc = idx % k;
-//     int inc_height = (num_pitch / out_width) * strides_h;
-//     int inc_width = (num_pitch % out_width) * strides_w;
-//     int filter_area = filter_height * filter_width;
-//     int feature = num_oc / filter_area;
-//     int height = (num_oc % filter_area) / filter_width;
-//     int width = (num_oc % filter_area) % filter_width;
-//     col[batch][num_pitch][num_oc] = im[batch][feature][height + inc_height][width + inc_width];
-//     // if(blockIdx.x == 0 && blockIdx.y=0 && threadIdx.x=0){
-//     //     printf("data: %d, %d, %d, %d\n", im[blockIdx.x][feature][height][width], feature,height,width);
-//     // }
-// }
+template <typename scalar_t>
+__global__ void im2col(
+    const scalar_t* __restrict__ im,
+    scalar_t* __restrict__ col,
+    int filter_height,
+    int filter_width,
+    int input_features,
+    int out_height,
+    int out_width,
+    int strides_h,
+    int strides_w,
+    int in_height,
+    int in_width,
+    int batch)
+{
+    int xx = blockIdx.x * blockDim.x + threadIdx.x;
+    int yy = blockIdx.y * blockDim.y + threadIdx.y;
+    int index = yy * gridDim.x * blockDim.x + xx;
 
-torch::Tensor linear_shift_cuda(
+    int k = filter_height * filter_width * input_features;
+    int num = out_height * out_width * batch;
+    if(index < k * num){
+        int h = index / num;
+        int w = index % num;
+        int n = w / (out_height * out_width);
+        int out_idx = w % (out_height * out_width);
+        int h_out = out_idx / out_width;
+        int w_out = out_idx % out_width;
+        int ic = h / (filter_height * filter_width);
+        int hh_f = (h % (filter_height * filter_width)) / filter_width;
+        int ww_f = (h % (filter_height * filter_width)) % filter_width;
+        
+        col[index] = im[ww_f + strides_w * w_out +
+                        (hh_f + strides_h * h_out) * in_width +
+                        ic * in_width * in_height +
+                        n * in_width * in_height * input_features];
+    }
+}
+
+template <typename scalar_t>
+__global__ void col2im(
+    const scalar_t* __restrict__ col,
+    scalar_t* __restrict__ im,
+    int filter_height,
+    int filter_width,
+    int input_features,
+    int out_height,
+    int out_width,
+    int strides_h,
+    int strides_w,
+    int in_height,
+    int in_width,
+    int batch,
+    int oc)
+{
+    int xx = blockIdx.x * blockDim.x + threadIdx.x;
+    int yy = blockIdx.y * blockDim.y + threadIdx.y;
+    int index = yy * gridDim.x * blockDim.x + xx;
+    int num = out_height * out_width * batch;
+    if(index < num * oc){
+        int h = index / oc;
+        int w = index % oc;
+        int n = h / (out_height * out_width);
+        int out_idx = h % (out_height * out_width);
+        int h_out = out_idx / out_width;
+        int w_out = out_idx % out_width;
+        im[w_out + h_out * out_width + out_width * out_height * w + n * oc * out_width * out_height] = col[index];
+
+    }
+}
+
+
+template <typename scalar_t>
+__global__ void GEMM_CUDA_KERNEL(
+    const scalar_t* __restrict__ col,
+    const scalar_t* __restrict__ filter,
+    const scalar_t* __restrict__ sign,
+    const scalar_t* __restrict__ bias,
+    scalar_t* __restrict__ result,
+    int im_num,
+    int filter_num,
+    int k,
+    int filter_height,
+    int filter_width,
+    int input_features)
+{
+    int xx = blockIdx.x * blockDim.x + threadIdx.x;
+    int yy = blockIdx.y * blockDim.y + threadIdx.y;
+    int index = yy * gridDim.x * blockDim.x + xx;
+    if(index < filter_num * im_num){
+        int h = index / filter_num;
+        int w = index % filter_num; 
+        for(int i = 0; i < k; i++){
+            auto f = filter[i * filter_num + w];
+            auto y = result[w + h * filter_num];
+            auto x = col[h + i * im_num];
+            
+            auto s = sign[ i +
+                          w * filter_height * filter_width * input_features];
+            if((bool)s){
+                if(f >= 0){
+                    y -= (x << f);
+                }
+                else{
+                    y -= (x >> (-f));
+                }
+            }
+            else{
+                if(f >= 0){
+                    y += (x << f);
+                }
+                else{
+                    y += (x >> (-f));
+                }
+            }
+
+            result[w + h * filter_num] = y;
+        }
+        result[w + h * filter_num] += bias[w];
+
+    }
+
+}
+
+void linear_shift_cuda(
     torch::Tensor& input,
     torch::Tensor& shift,
     torch::Tensor& sign,
-    torch::Tensor& bias)
+    torch::Tensor& bias,
+    torch::Tensor& output)
 {
     
-    auto output =  torch::zeros({input.size(0),shift.size(0)}, torch::dtype(torch::kInt32));
-    output = output.to(at::kCUDA);
+
     const int block = (input.size(0) * shift.size(0) + 1024 -1) / 1024;
     const int threads = 1024;
-    // std::cout<<input.type()<<std::endl;
-    // std::cout<<shift.type()<<std::endl;
-    // std::cout<<sign.type()<<std::endl;
-    // std::cout<<bias.type()<<std::endl;
-    // std::cout<<output.type()<<std::endl;
-    
+
     AT_DISPATCH_INTEGRAL_TYPES(input.type(), "linear shift kernel", ([&] {
         linear_shift_cuda_kernel<scalar_t><<<block, threads>>>(
             input.data<scalar_t>(),
@@ -189,19 +278,21 @@ torch::Tensor linear_shift_cuda(
             shift.size(0));
       }));
 
-      return output;
+      
 }
 
 
-torch::Tensor conv2d_shift_cuda(
+
+
+void conv2d_shift_cuda(
     torch::Tensor& input,
     torch::Tensor& shift,
     torch::Tensor& sign,
     torch::Tensor& bias,
+    torch::Tensor& output,
     torch::IntArrayRef strides,
     torch::IntArrayRef padding)
 {
-    
     
     int strides_h;
     int strides_w;
@@ -213,20 +304,10 @@ torch::Tensor conv2d_shift_cuda(
         strides_h = strides[0];
         strides_w = strides[1];
     }
-    
-    int out_height = (input.size(2) -shift.size(2)) / strides_h +1;
-    int out_width = (input.size(3) - shift.size(3)) / strides_w +1;
-    
-    auto output = torch::zeros({input.size(0),shift.size(0),out_height,out_width}, torch::dtype(torch::kInt32));
-
-    output = output.to(at::kCUDA);
-    
-    int temp = (out_height * out_width * shift.size(0)  + 1024 - 1) / 1024;
-    const dim3 block(input.size(0), temp);
-    const int threads = 1024;
-    // start = std::clock();
-    // std::cout<<"hello"<<std::endl;
-
+  
+    int temp = (output.size(2) * output.size(3) * shift.size(0)  + 1024 - 1) / 1024;
+    const dim3 block(temp, output.size(0));
+    const dim3 threads(32,32);
     AT_DISPATCH_INTEGRAL_TYPES(input.type(), "conv2d cuda", ([&] {
         conv2d_shift_cuda_kernel<scalar_t><<<block, threads>>>(
             input.data<scalar_t>(),
@@ -237,24 +318,119 @@ torch::Tensor conv2d_shift_cuda(
             shift.size(2),
             shift.size(3),
             input.size(1),
-            out_height,
-            out_width,
+            output.size(2),
+            output.size(3),
             strides_h,
             strides_w,
             shift.size(0),
             input.size(3),
             input.size(2));
-    }));
+    })); 
     
-    // duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
-
-    // std::cout<<"One batch use "<< duration <<'\n';
-
-    return output;
 }
 
 
+void GEMM_CUDA(
+    torch::Tensor& input,
+    torch::Tensor& shift,
+    torch::Tensor& sign,
+    torch::Tensor& bias,
+    torch::Tensor& output,
+    torch::IntArrayRef strides,
+    torch::IntArrayRef padding)
+{
 
+    int strides_h;
+    int strides_w;
+    if(strides.size() ==1){
+        strides_h = strides[0];
+        strides_w = strides[0];
+    }
+    else{
+        strides_h = strides[0];
+        strides_w = strides[1]; 
+    }
+    
+    int k  = shift.size(2)*shift.size(3)*shift.size(1);
+    int num_p = output.size(2)*output.size(3)*output.size(0);
+    auto options =  torch::TensorOptions().dtype(torch::kInt32).device(torch::kCUDA, 0);
+    auto col = torch::zeros({k, num_p},options);
+    
+    int tmp = (k * num_p + 1024 -1) / 1024;
+    int tmp1 = (tmp + 65535 -1) / 65535;
+    tmp  = (tmp > 65535) ? 65535: tmp;  
+    const dim3 blk(tmp,tmp1);
+    AT_DISPATCH_INTEGRAL_TYPES(input.type(), "im2col cuda", ([&] {
+        im2col<scalar_t><<<blk, 1024>>>(
+            input.data<scalar_t>(), 
+            col.data<scalar_t>(),
+            shift.size(2),
+            shift.size(3),
+            input.size(1),
+            output.size(2),
+            output.size(3),
+            strides_h,
+            strides_w,
+            input.size(2),
+            input.size(3),
+            input.size(0));
+    }));
+    int filter_p = 1 * 1 * shift.size(0);
+    auto filter = torch::zeros({k, filter_p},options);
+    tmp = (k * filter_p + 1024 -1) / 1024;
+    tmp1 = (tmp + 65535 -1) / 65535;
+    tmp  = (tmp > 65535) ? 65535: tmp;
+    const dim3 block(tmp,tmp1);
+    AT_DISPATCH_INTEGRAL_TYPES(shift.type(), "im2col cuda", ([&] {
+        im2col<scalar_t><<<block, 1024>>>(
+            shift.data<scalar_t>(), 
+            filter.data<scalar_t>(),
+            shift.size(2),
+            shift.size(3),
+            shift.size(1),
+            1,
+            1,
+            strides_h,
+            strides_w,
+            shift.size(2),
+            shift.size(3),
+            shift.size(0));
+    }));
 
-
-
+    tmp = (num_p * filter_p + 1024 -1) / 1024;
+    tmp1 = (tmp + 65535 -1) / 65535;
+    tmp  = (tmp > 65535) ? 65535: tmp;
+    const dim3 block1(tmp,tmp1);
+    auto result = torch::zeros({num_p, filter_p},options);
+    AT_DISPATCH_INTEGRAL_TYPES(shift.type(), "GEMM_CUDA_KERNEL", ([&] {
+        GEMM_CUDA_KERNEL<scalar_t><<<block1, 1024>>>(
+            col.data<scalar_t>(), 
+            filter.data<scalar_t>(),
+            sign.data<scalar_t>(),
+            bias.data<scalar_t>(),
+            result.data<scalar_t>(),
+            num_p,
+            filter_p,
+            k,
+            shift.size(2),
+            shift.size(3),
+            shift.size(1));
+    }));
+    AT_DISPATCH_INTEGRAL_TYPES(result.type(), "col2im cuda", ([&] {
+        col2im<scalar_t><<<block1, 1024>>>(
+            result.data<scalar_t>(), 
+            output.data<scalar_t>(),
+            shift.size(2),
+            shift.size(3),
+            input.size(1),
+            output.size(2),
+            output.size(3),
+            strides_h,
+            strides_w,
+            input.size(2),
+            input.size(3),
+            input.size(0),
+            shift.size(0));
+    }));
+  
+}
