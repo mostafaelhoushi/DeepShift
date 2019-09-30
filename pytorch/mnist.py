@@ -9,7 +9,7 @@ import csv
 import distutils
 import os
 from contextlib import redirect_stdout
-
+import time
 from torchsummary import summary
 
 import shift
@@ -120,17 +120,18 @@ def main():
     
     parser.add_argument('--save-model', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                         help='For Saving the current Model (default: True)')
-    parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+    parser.add_argument('--print-weights', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                         help='For printing the weights of Model (default: True)')
     parser.add_argument('--desc', type=str, default=None,
                         help='description to append to model directory name')
+    parser.add_argument('--use-kernel', type=lambda x:bool(distutils.util.strtobool(x)), default=False,
+                        help='whether using custom shift kernel')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
-
+    
     torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu")
-
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=True, download=True,
@@ -155,7 +156,7 @@ def main():
         mdoel = model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda)
         model = model.to(device)
 
     loss_fn = F.cross_entropy # F.nll_loss
@@ -170,7 +171,7 @@ def main():
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-    summary(model, input_size=(1, 28, 28))
+    # summary(model, input_size=(1, 28, 28))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     if (args.save_model):
@@ -181,9 +182,9 @@ def main():
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                summary(model, input_size=(1, 28, 28))
+                #summary(model, input_size=(1, 28, 28))
                 print("WARNING: The summary function is not counting properly parameters in custom layers")
-
+    start = time.time()
     if args.evaluate:
         test_loss, correct = test(args, model, device, test_loader, loss_fn)
         test_log = [(test_loss, correct/1e4)]
@@ -209,7 +210,8 @@ def main():
         torch.save(model, os.path.join(model_dir, "model.pt"))
         torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
         torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
-
+    end = time.time()
+    print("use time:",end - start )
     if (args.print_weights):
         # Print model's state_dict
         print("Model's state_dict:")

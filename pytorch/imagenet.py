@@ -9,7 +9,6 @@ import csv
 import distutils
 from contextlib import redirect_stdout
 from collections import OrderedDict
-
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -112,7 +111,8 @@ parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutil
                     help='For printing the weights of Model (default: True)')
 parser.add_argument('--desc', type=str, default=None,
                     help='description to append to model directory name')
-
+parser.add_argument('--use-kernel', type=lambda x:bool(distutils.util.strtobool(x)), default=False,
+                        help='whether using custom shift kernel')
 
 best_acc1 = 0
 
@@ -191,7 +191,7 @@ def main_worker(gpu, ngpus_per_node, args):
         model = models.__dict__[args.arch]()
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained,use_kernel = args.use_kernel)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -348,7 +348,7 @@ def main_worker(gpu, ngpus_per_node, args):
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
-
+    start = time.time()
     if args.evaluate:
         start_log_time = time.time()
         val_log = validate(val_loader, model, criterion, args)
@@ -409,7 +409,8 @@ def main_worker(gpu, ngpus_per_node, args):
                     'optimizer' : optimizer.state_dict(),
                     'lr_scheduler' : lr_scheduler,
                 }, is_best, model_dir)
-
+    end = time.time()
+    print("use time:",end - start )
     if (args.print_weights):
         with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
             with redirect_stdout(weights_log_file):
@@ -495,7 +496,7 @@ def validate(val_loader, model, criterion, args):
             # compute output
             output = model(input)
             loss = criterion(output, target)
-
+            print(output)
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), input.size(0))

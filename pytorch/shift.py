@@ -4,32 +4,53 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.nn.modules.utils import _pair
 from torch.nn import init
-from convert_to_shift import get_shift_and_sign
-
+import shift_kernel
+import shift_cuda_kernel
 import math
 import numpy as np
+import time
 
-def round_to_fixed(input, bits=16):
-    assert bits >= 1, bits
-    if bits == 1:
-        return torch.sign(input) - 1
-    delta = math.pow(2.0, -(bits/2))
-    bound = math.pow(2.0, bits-1)
-    min_val = - bound
-    max_val = bound - 1
-    rounded = torch.floor(input / delta + 0.5)
+def round_to_fixed(input, fraction, integer): 
+    assert integer >= 1, integer 
+    if integer == 1: 
+        return torch.sign(input) - 1 
+    delta = math.pow(2.0, -(fraction/2)) 
+    bound = math.pow(2.0, integer-1) 
+    min_val = - bound 
+    max_val = bound - 1 
+    rounded = torch.floor(input / delta + 0.5) 
 
-    clipped_value = torch.clamp(rounded, min_val, max_val) * delta
-    return clipped_value
+
+    clipped_value = torch.clamp(rounded, min_val, max_val) * delta 
+    return clipped_value 
+
+def get_shift_and_sign(x):
+    sign = torch.sign(x)
+    # convert sign to (-1)^sign
+    # i.e., 1 -> 0, -1 -> 1
+    #sign = sign.numpy()
+    sign[sign == 1] = 0
+    sign[sign == -1] = 1
+    
+    x_abs = torch.abs(x)
+    shift = torch.round(torch.log(x_abs) / np.log(2))
+
+    return shift, sign    
+
+def round_power_of_2(x):
+    shift, sign = get_shift_and_sign(x)    
+    x_rounded = (2.0 ** shift) * sign
+    return x_rounded
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False,use_cuda =True):
+ 
         super(LinearShift, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-
+        self.use_kernel = use_kernel
         self.check_grad = check_grad
-
+        self.use_cuda = use_cuda
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -62,10 +83,29 @@ class LinearShift(nn.Module):
             bound = 1 / math.sqrt(fan_in)
             init.uniform_(self.bias, -bound, bound)
 
-    def forward(self, input):
-        if self.check_grad is False:
-            input.data=round_to_fixed(input.data)
+    def forward(self, input):   
+        fraction_bits = 16
+        integer_bit = 16
+        
+        
+        if self.use_kernel:
+           
+            input_ = input.clone()
+            input_.data  = input_.data * (2 ** fraction_bits)
+            input_.data = input_.data.int()
+            
+            if self.bias is not None:
+                bias_ = self.bias.clone()
+                bias_.data = bias_.data * (2 ** fraction_bits)
+                bias_.data = bias_.data.int()
+            
+        else:
+            if self.check_grad is False:
+                input.data=round_to_fixed(input.data,fraction_bits, integer_bit)
+                if self.bias is not None:
+                    self.bias.data=round_to_fixed(self.bias.data,fraction_bits, integer_bit)
 
+        
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
         self.shift.data=self.shift.org.round()
@@ -73,10 +113,42 @@ class LinearShift(nn.Module):
         if not hasattr(self.sign,'org'):
             self.sign.org=self.sign.data.clone()
         self.sign.data=self.sign.org.round()
+       
+    
+        if self.use_kernel:
+            if(self.use_cuda):
+                self.sign.data = self.sign.data.int()
+                self.shift.data = self.shift.data.int()
+            
+                out = torch.zeros([input.size(0),self.shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                # shift_cuda_kernel.linear_shift(input_, shift_, sign_, bias_,out)
+                if self.bias is not None:
+                    shift_cuda_kernel.linear_shift(input_, self.shift, self.sign, bias_,out)
+                else:
+                    temp = torch.zeros([self.shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                    shift_cuda_kernel.linear_shift(input_, self.shift, self.sign, temp,out)
+                out = out.float()
+                out = out / (2**fraction_bits)
+                
+                self.shift.data = self.shift.data.float()
+                self.sign.data = self.sign.data.float()
 
-        weight = (2 ** self.shift) * ( (-1) ** self.sign )
-        return F.linear(input, weight, self.bias)
-        
+                return out
+            else:
+                print("linear cpu kernel")
+                nn = shift_kernel.linear_kernel(input_.detach().numpy(), self.shift.detach().numpy(),self.sign.detach().numpy(),bias_.detach().numpy())
+
+                out = torch.FloatTensor(nn)
+
+                out = out / (2**fraction_bits)
+                return out
+
+
+        else:
+          
+            weight = (2 ** self.shift) * ( (-1) ** self.sign )
+            return F.linear(input, weight, self.bias)
+       
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -95,8 +167,8 @@ from torch.autograd import gradcheck
 data = torch.randn(20,20,dtype=torch.double,requires_grad=True)
 weight = torch.randn(30,20,dtype=torch.double,requires_grad=True)
 input = (data, weight)
-test = gradcheck(linear_shift, data, eps=1e-6, atol=1e-4)
-print("gradcheck result for linear_shift: ", test)
+# test = gradcheck(linear_shift, data, eps=1e-6, atol=1e-4)
+# print("gradcheck result for linear_shift: ", test)
 
 
 class _ConvNdShift(nn.Module):
@@ -171,19 +243,37 @@ class _ConvNdShift(nn.Module):
 class Conv2dShift(_ConvNdShift):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros', check_grad=False):
+                 bias=True, padding_mode='zeros', check_grad=False, use_kernel=False,use_cuda =True):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
+        self.use_kernel = use_kernel
+        self.use_cuda = use_cuda
         super(Conv2dShift, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), groups, bias, padding_mode)
 
     #@weak_script_method
     def forward(self, input):
-        input.data=round_to_fixed(input.data)
+        fraction_bits = 16
+        integer_bits = 16
+        if self.use_kernel:
+            
+            input_  = input.clone()
+            input_.data  = input_.data * (2 ** fraction_bits)
+            input_ = input_.int()
 
+            if self.bias is not None:
+                bias_ = self.bias.clone()
+                bias_.data = bias_.data * (2 ** fraction_bits)
+                bias_.data = bias_.data.int()
+
+        else:
+            input.data=round_to_fixed(input.data,fraction_bits, integer_bits)
+            if self.bias is not None:
+                self.bias.data=round_to_fixed(self.bias.data,fraction_bits, integer_bits)
+    
         if not hasattr(self.shift,'org'):
             self.shift.org=self.shift.data.clone()
         self.shift.data=self.shift.org.round()
@@ -191,14 +281,62 @@ class Conv2dShift(_ConvNdShift):
         if not hasattr(self.sign,'org'):
             self.sign.org=self.sign.data.clone()
         self.sign.data=self.sign.org.round()
+       
 
-        weight = (2 ** self.shift) * ( (-1) ** self.sign )
+        if self.use_kernel:
+            if(self.use_cuda):
+                self.sign.data = self.sign.data.int()
+                self.shift.data = self.shift.data.int()
+                if self.padding_mode == 'circular':
+                    print('circular')
+                if len(self.padding) == 2:
+                    padding = (self.padding[0],self.padding[0],self.padding[1],self.padding[1])
+                else:
+                    padding = self.padding
+                input_ = F.pad(input = input_, pad = padding, mode = 'constant', value = 0)
+                if len(self.stride) == 1:
+                    strides_h = self.stride[0]
+                    strides_w = self.stride[0]
+                else: 
+                    strides_h = self.stride[0]
+                    strides_w = self.stride[1]
+                out_height = int((input_.size(2) - self.shift.size(2)) / strides_h +1)
+                out_width = int((input_.size(3) - self.shift.size(3)) / strides_w +1)
+                out = torch.zeros([input_.size(0), self.shift.size(0), out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
 
-        if self.padding_mode == 'circular':
-            expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
-                                (self.padding[0] + 1) // 2, self.padding[0] // 2)
-            return F.conv2d(F.pad(input, expanded_padding, mode='circular'),
-                            weight, self.bias, self.stride,
-                            _pair(0), self.dilation, self.groups)
-        return F.conv2d(input, weight, self.bias, self.stride,
-                        self.padding, self.dilation, self.groups)
+                if self.bias is not None:
+                    shift_cuda_kernel.conv2d_shift(input_, self.shift, self.sign, bias_, out, self.stride, self.padding )
+                else:
+                    temp = torch.zeros([self.shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                    shift_cuda_kernel.conv2d_shift(input_, self.shift, self.sign, temp, out, self.stride, self.padding )
+                out = out.float()
+                out = out / (2**fraction_bits)
+                
+                self.shift.data = self.shift.data.float()
+                self.sign.data = self.sign.data.float()
+          
+                return out
+            else:
+                print("conv cpu kernel")
+                input_ = F.pad(input = input_, pad = self.padding, mode = 'constant', value = 0)
+                out = shift_kernel.convolution_kernel(input_.detach().numpy(), 
+                    self.shift.detach().numpy(),
+                    self.sign.detach().numpy(),
+                    bias_.detach().numpy(),self.stride, self.padding)
+                out = torch.FloatTensor(out)
+                out = out / (2**fraction_bits)
+                return out
+
+        else:
+            weight = (2 ** self.shift) * ( (-1) ** self.sign )
+            
+            if self.padding_mode == 'circular':
+                expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
+                                    (self.padding[0] + 1) // 2, self.padding[0] // 2)
+                aa= F.conv2d(F.pad(input, expanded_padding, mode='circular'),
+                                weight, self.bias, self.stride,
+                                _pair(0), self.dilation, self.groups)
+            aa= F.conv2d(input, weight, self.bias, self.stride,
+                            self.padding, self.dilation, self.groups)
+
+            return aa
