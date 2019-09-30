@@ -9,7 +9,6 @@ import csv
 import distutils
 from contextlib import redirect_stdout
 from collections import OrderedDict
-import time
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -192,9 +191,7 @@ def main_worker(gpu, ngpus_per_node, args):
         model = models.__dict__[args.arch]()
 
     if args.shift_depth > 0:
-        # model1 = copy.deepcopy(model)
         model, _ = convert_to_shift(model, args.shift_depth, convert_weights = args.pretrained,use_kernel = args.use_kernel)
-        # model1, _ = convert_to_shift(model1, args.shift_depth, convert_weights = args.pretrained,use_kernel = False)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -498,11 +495,8 @@ def validate(val_loader, model, criterion, args):
 
             # compute output
             output = model(input)
-            # output1 = model1(input)
             loss = criterion(output, target)
             print(output)
-            # print(output1)
-            # print(model.state_dict())
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), input.size(0))

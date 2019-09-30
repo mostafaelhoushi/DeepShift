@@ -132,9 +132,7 @@ def main():
     torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu")
-    #device = torch.device("cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
-    #kwargs = {}
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=True, download=True,
                        transform=transforms.Compose([
@@ -173,7 +171,7 @@ def main():
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-   # summary(model, input_size=(1, 28, 28))
+    # summary(model, input_size=(1, 28, 28))
     print("WARNING: The summary function is not counting properly parameters in custom layers")
 
     if (args.save_model):
