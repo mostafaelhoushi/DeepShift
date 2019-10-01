@@ -171,8 +171,8 @@ def main():
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-    # summary(model, input_size=(1, 28, 28))
-    print("WARNING: The summary function is not counting properly parameters in custom layers")
+    summary(model, input_size=(1, 28, 28))
+    print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
     if (args.save_model):
         model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
@@ -182,8 +182,8 @@ def main():
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                #summary(model, input_size=(1, 28, 28))
-                print("WARNING: The summary function is not counting properly parameters in custom layers")
+                summary(model, input_size=(1, 28, 28))
+                print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
     start = time.time()
     if args.evaluate:
         test_loss, correct = test(args, model, device, test_loader, loss_fn)

@@ -360,6 +360,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if (args.gpu is not None):
         model_tmp_copy.cuda(args.gpu)
     summary(model_tmp_copy, input_size=(3, 32, 32))
+    print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
     # name model sub-directory "shift_all" if all layers are converted to shift layers
     conv2d_layers_count = count_layer_type(model, nn.Conv2d)
@@ -386,6 +387,7 @@ def main_worker(gpu, ngpus_per_node, args):
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 summary(model_tmp_copy, input_size=(3, 32, 32))
+                print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
     del model_tmp_copy # to save memory
 
