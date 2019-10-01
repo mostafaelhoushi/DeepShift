@@ -82,8 +82,9 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
     if isinstance(input_size, tuple):
         input_size = [input_size]
 
-    # batch_size of 2 for batchnorm
-    x = [torch.rand(2, *in_size).type(dtype) for in_size in input_size]
+    # batch_size of at least 2 for each GPU for batchnorm
+    n_samples = (torch.cuda.device_count() + 1)*2
+    x = [torch.rand(n_samples, *in_size).type(dtype) for in_size in input_size]
     # print(type(x[0]))
 
     # create properties
