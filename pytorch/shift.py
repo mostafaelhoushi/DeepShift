@@ -46,47 +46,35 @@ class LinearShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, use_kernel=False):
+    def forward(ctx, input, shift, sign, bias=None, use_kernel=False, use_cuda=True):
         fraction_bits = 16
         integer_bit = 16
-        
-        if use_kernel:   
-            input_ = input.clone()
-            input_.data  = input_.data * (2 ** fraction_bits)
-            input_.data = input_.data.int()
-            
-            if bias is not None:
-                bias_ = self.bias.clone()
-                bias_.data = bias_.data * (2 ** fraction_bits)
-                bias_.data = bias_.data.int()
-        else:
-            input.data=round_to_fixed(input.data,fraction_bits, integer_bit)
-            if bias is not None:
-                bias.data=round_to_fixed(bias.data,fraction_bits, integer_bit)
 
         sign = sign.clamp(-1,1)
    
         if use_kernel:
-            if(use_cuda):
-                sign.data = sign.data.int()
-                shift.data = shift.data.int()
-            
-                out = torch.zeros([input.size(0),shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+            input_fixed_point = (input * (2 ** fraction_bits)).int()
+            if bias is not None:
+                bias_fixed_point = (bias * (2 ** fraction_bits)).int()
+
+            if(use_cuda):            
+                out = torch.zeros([input.size(0), shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
                 if bias is not None:
-                    shift_cuda_kernel.linear_shift(input_, shift, sign, bias_,out)
+                    shift_cuda_kernel.linear_shift(input_fixed_point, shift.int(), sign.int(), bias_fixed_point, out)
                 else:
                     temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                    shift_cuda_kernel.linear_shift(input_, shift, sign, temp,out)
+                    shift_cuda_kernel.linear_shift(input_fixed_point, shift.int(), sign.int(), temp, out)
                 out = out.float()
                 out = out / (2**fraction_bits)
-                
-                shift.data = shift.data.float()
-                sign.data = sign.data.float()
             else:
-                nn = shift_kernel.linear_kernel(input_.detach().numpy(), shift.detach().numpy(),sign.detach().numpy(),bias_.detach().numpy())
+                nn = shift_kernel.linear_kernel(input_fixed_point.detach().numpy(), shift.detach().numpy(), sign.detach().numpy(), bias_fixed_point.detach().numpy())
                 out = torch.FloatTensor(nn)
                 out = out / (2**fraction_bits)
-        else:         
+        else:
+            input.data = round_to_fixed(input.data, fraction_bits, integer_bit)
+            if bias is not None:
+                bias.data = round_to_fixed(bias.data, fraction_bits, integer_bit)
+
             v = 2**shift.round() * sign.sign()
             out = input.mm(v.t())
             if bias is not None:
@@ -121,10 +109,10 @@ class LinearShiftFunction(Function):
         if bias is not None and ctx.needs_input_grad[3]:
             grad_bias = grad_output.sum(0).squeeze(0)
 
-        return grad_input, grad_shift, grad_sign, grad_bias
+        return grad_input, grad_shift, grad_sign, grad_bias, None, None
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False,use_cuda =True):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False, use_cuda=True):
  
         super(LinearShift, self).__init__()
         self.in_features = in_features
@@ -169,7 +157,7 @@ class LinearShift(nn.Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
-        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias)
+        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias, self.use_kernel, self.use_cuda)
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -398,7 +386,9 @@ class Conv2dShift(_ConvNdShift):
                                 (self.padding[0] + 1) // 2, self.padding[0] // 2)
             return Conv2dShiftFunction.apply(F.pad(input, expanded_padding, mode='circular'),
                             self.shift, self.sign, self.bias, self.stride,
-                            _pair(0), self.dilation, self.groups, self.use_kernel)
+                            _pair(0), self.dilation, self.groups, 
+                            self.use_kernel, self.use_cuda)
         else:
             return Conv2dShiftFunction.apply(input, self.shift, self.sign, self.bias, self.stride,
-                            self.padding, self.dilation, self.groups, self.use_kernel)
+                            self.padding, self.dilation, self.groups, 
+                            self.use_kernel, self.use_cuda)
