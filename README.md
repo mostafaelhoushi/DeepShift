@@ -77,8 +77,11 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-
-7. Install our CPU and CUDA kernels that perform matrix multiplication and convolution using bit-wise shifts:
+7. cd into `pytorch` directroy:
+```
+cd pytorch
+```
+8. Install our CPU and CUDA kernels that perform matrix multiplication and convolution using bit-wise shifts:
 ```
 cd cpu_kernal
 python setup.py install
@@ -87,12 +90,6 @@ cd ...
 cd cuda_kernel
 python setup.py install
 cd ...
-```
-
-
-8. cd into `pytorch` directroy:
-```
-cd pytorch
 ```
 9. Now you can run the different scripts with different options, e.g.,
     a) Train a DeepShift simple fully-connected model on the MNIST dataset:
