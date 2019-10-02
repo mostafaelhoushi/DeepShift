@@ -174,7 +174,7 @@ def main():
             model = ConvMNIST().to(device)
 
         if args.pretrained:
-            model = model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
+            model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
 
     if args.weights:
         saved_weights = torch.load(args.weights)
@@ -190,7 +190,7 @@ def main():
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda)
         model = model.to(device)
-
+    
     loss_fn = F.cross_entropy # F.nll_loss
     if args.type == 'linear' or (args.type == 'conv' and args.shift_depth > 0):
         optimizer = optim.RMSprop(model.parameters(), lr=args.lr, momentum=args.momentum) 
@@ -221,11 +221,11 @@ def main():
     summary(model_tmp_copy, input_size=(1, 28, 28))
     print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
-    if (args.save_model):
-        model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
-        if not os.path.isdir(model_dir):
-            os.makedirs(model_dir, exist_ok=True)
+    model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
+    if not os.path.isdir(model_dir):
+        os.makedirs(model_dir, exist_ok=True)
 
+    if (args.save_model):
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"

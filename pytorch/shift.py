@@ -57,7 +57,7 @@ class LinearShiftFunction(Function):
             if bias is not None:
                 bias_fixed_point = (bias * (2 ** fraction_bits)).int()
 
-            if(use_cuda):            
+            if(use_cuda):         
                 out = torch.zeros([input.size(0), shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
                 if bias is not None:
                     shift_cuda_kernel.linear_shift(input_fixed_point, shift.int(), sign.int(), bias_fixed_point, out)
