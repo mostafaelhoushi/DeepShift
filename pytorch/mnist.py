@@ -11,6 +11,7 @@ import os
 from contextlib import redirect_stdout
 import time
 from torchsummary import summary
+import copy
 
 import shift
 from convert_to_shift import convert_to_shift
@@ -113,6 +114,8 @@ def main():
                         help='learning rate (default: 0.01)')
     parser.add_argument('--momentum', type=float, default=0.0, metavar='M',
                         help='SGD momentum (default: 0.0)')
+    parser.add_argument('--resume', default='', type=str, metavar='CHECKPOINT_PATH',
+                        help='path to latest checkpoint (default: none)')
     parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                         help='only evaluate model on validation set')
     parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -194,13 +197,28 @@ def main():
     else:
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
+    # optionally resume from a checkpoint
+    if args.resume:
+        if os.path.isfile(args.resume):
+            print("=> loading checkpoint '{}'".format(args.resume))
+            checkpoint = torch.load(args.resume)
+            if 'state_dict' in checkpoint:
+                model.load_state_dict(checkpoint['state_dict'])
+            else:
+                model.load_state_dict(checkpoint)
+            print("=> loaded checkpoint '{}'"
+                  .format(args.resume))
+        else:
+            print("=> no checkpoint found at '{}'".format(args.resume))
+
     if args.desc is not None and len(args.desc) > 0:
         model_name = 'simple_%s/%s_shift_%s' % (args.type, args.desc, args.shift_depth)
     else:
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-    summary(model, input_size=(1, 28, 28))
+    model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
+    summary(model_tmp_copy, input_size=(1, 28, 28))
     print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
     if (args.save_model):
@@ -211,8 +229,11 @@ def main():
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                summary(model, input_size=(1, 28, 28))
+                summary(model_tmp_copy, input_size=(1, 28, 28))
                 print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+
+    del model_tmp_copy
+
     start = time.time()
     if args.evaluate:
         test_loss, correct = test(args, model, device, test_loader, loss_fn)
