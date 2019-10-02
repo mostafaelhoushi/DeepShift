@@ -28,13 +28,13 @@ class Ranger(Optimizer):
     def __init__(self, params, lr=1e-3, alpha=0.5, k=6, N_sma_threshhold=5, betas=(.95,0.999), eps=1e-5, weight_decay=0):
         #parameter checks
         if not 0.0 <= alpha <= 1.0:
-            raise ValueError(f'Invalid slow update rate: {alpha}')
+            raise ValueError('Invalid slow update rate: ', alpha)
         if not 1 <= k:
-            raise ValueError(f'Invalid lookahead steps: {k}')
+            raise ValueError('Invalid lookahead steps: ', k)
         if not lr > 0:
-            raise ValueError(f'Invalid Learning Rate: {lr}')
+            raise ValueError('Invalid Learning Rate: ', lr)
         if not eps > 0:
-            raise ValueError(f'Invalid eps: {eps}')
+            raise ValueError('Invalid eps: ', eps)
 
         #parameter comments:
         # beta1 (momentum) of .95 seems to work better than .90...
