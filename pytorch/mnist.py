@@ -103,7 +103,7 @@ def main():
     parser.add_argument('--shift_depth', type=int, default=0,
                         help='how many layers to convert to shift')
     parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
-                    help='number of data loading workers (default: 1)')
+                        help='number of data loading workers (default: 1)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -175,6 +175,7 @@ def main():
 
         if args.pretrained:
             model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
+            model = model.to(device)
 
     if args.weights:
         saved_weights = torch.load(args.weights)
@@ -218,7 +219,7 @@ def main():
 
     # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
     model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
-    summary(model_tmp_copy, input_size=(1, 28, 28))
+    summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
     print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
     model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
@@ -229,7 +230,7 @@ def main():
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                summary(model_tmp_copy, input_size=(1, 28, 28))
+                summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
                 print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
 
     del model_tmp_copy
