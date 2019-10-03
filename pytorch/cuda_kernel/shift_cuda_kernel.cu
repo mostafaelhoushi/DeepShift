@@ -24,7 +24,7 @@ __global__ void linear_shift_cuda_kernel(
             auto x = input[idx_h * input_features + i];
             auto s = shift[idx_w * input_features + i];
             auto y = output[blockIdx.x * blockDim.x + threadIdx.x];
-            if((bool)sign[idx_w * input_features + i]){
+            if(sign[idx_w * input_features + i] < 0){
                 if(s >= 0){
                     y -= (x << s);
                 }
@@ -32,7 +32,7 @@ __global__ void linear_shift_cuda_kernel(
                     y -= (x >> (-s));
                 }
             }
-            else{
+            else if(sign[idx_w * input_features + i] > 0){
                 if(s >= 0){
                     y += (x << s);
                 }
@@ -98,9 +98,9 @@ __global__ void conv2d_shift_cuda_kernel(
                     auto x = input[j + strides_w * w + (i + strides_h * h) * in_width 
                                     + k * in_width * in_height 
                                     + batch * in_width * in_height * input_features];
-                    if((bool)sign[j + i * filter_width 
+                    if(sign[j + i * filter_width 
                                 + k * filter_height * filter_width + 
-                                out_channel * filter_height * filter_width * input_features]){
+                                out_channel * filter_height * filter_width * input_features] < 0){
                         if(s >= 0){
                             y -= (x << s);
                         }
@@ -108,7 +108,9 @@ __global__ void conv2d_shift_cuda_kernel(
                             y -= (x >> (-s));
                         }
                     }
-                    else{
+                    else if(sign[j + i * filter_width 
+                                + k * filter_height * filter_width + 
+                                out_channel * filter_height * filter_width * input_features] > 0){
                         if(s >= 0){
                             y += (x << s);
                         }
@@ -229,7 +231,7 @@ __global__ void GEMM_CUDA_KERNEL(
             
             auto s = sign[ i +
                           w * filter_height * filter_width * input_features];
-            if((bool)s){
+            if(s < 0){
                 if(f >= 0){
                     y -= (x << f);
                 }
@@ -237,7 +239,7 @@ __global__ void GEMM_CUDA_KERNEL(
                     y -= (x >> (-f));
                 }
             }
-            else{
+            else if (s > 0){
                 if(f >= 0){
                     y += (x << f);
                 }

@@ -83,12 +83,15 @@ void stub(
                 auto s = shift[output_feature][input_feature];
                 auto y = output[batch][output_feature];
                 auto x = input[batch][input_feature];
-                if(sign[output_feature][input_feature]){
+                if(sign[output_feature][input_feature] < 0){
                     y -= (x << s);
                 }
-                else{
+                else if(sign[output_feature][input_feature] > 0) {
                     y += (x << s);
                 }
+                //else if(sign[output_feature][input_feature] == 0) {
+                //    y += 0;
+                //}
               
                 output[batch][output_feature] = y;
              
@@ -184,16 +187,16 @@ vector<vector<int32_t>> linear_kernel(
                 // cout<<"2"<<endl;
                 auto x = input[batch][input_feature];
                 // cout<<"3"<<endl;
-                if((bool)sign[output_feature][input_feature] && s >=0 ){
+                if(sign[output_feature][input_feature] < 0 && s >=0 ){
                     y -= (x << s);
                 }
-                else if(!(bool)sign[output_feature][input_feature] && s >=0){
+                else if(sign[output_feature][input_feature] > 0 && s >=0){
                     y += (x << s);
                 }
-                else if((bool)sign[output_feature][input_feature] && s <0){
+                else if(sign[output_feature][input_feature] < 0 && s <0){
                     y -= (x >> (-s));
                 }
-                else{
+                else if(sign[output_feature][input_feature] > 0 && s <0) {
                     y += (x >> (-s));
                 }
                 output[batch][output_feature] = y;
