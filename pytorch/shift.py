@@ -14,17 +14,19 @@ try:
 except:
     print("Unable to import CPU and/or CUDA bit-wise shift kernels")
 
+
+
 def round_to_fixed(input, fraction, integer): 
     assert integer >= 1, integer 
     if integer == 1: 
         return torch.sign(input) - 1 
-    delta = math.pow(2.0, -(fraction/2)) 
+    delta = math.pow(2.0, -(fraction))
     bound = math.pow(2.0, integer-1) 
     min_val = - bound 
     max_val = bound - 1 
-    rounded = torch.floor(input / delta + 0.5) 
+    rounded = torch.floor(input / delta) * delta
 
-    clipped_value = torch.clamp(rounded, min_val, max_val) * delta 
+    clipped_value = torch.clamp(rounded, min_val, max_val)
     return clipped_value 
 
 def get_shift_and_sign(x):
@@ -207,9 +209,9 @@ class Conv2dShiftFunction(Function):
                 bias_.data = bias_.data * (2 ** fraction_bits)
                 bias_.data = bias_.data.int()
         else:
-            input.data=round_to_fixed(input.data, fraction_bits, integer_bits)
+            input.data = round_to_fixed(input.data, fraction_bits, integer_bits)
             if bias is not None:
-                bias.data=round_to_fixed(bias.data, fraction_bits, integer_bits)
+                bias.data = round_to_fixed(bias.data, fraction_bits, integer_bits)
  
         sign = sign.clamp(-1,1)
 
