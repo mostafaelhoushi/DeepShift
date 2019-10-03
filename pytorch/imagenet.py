@@ -524,7 +524,7 @@ def validate(val_loader, model, criterion, args):
             # compute output
             output = model(input)
             loss = criterion(output, target)
-            print(output)
+
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
             losses.update(loss.item(), input.size(0))
