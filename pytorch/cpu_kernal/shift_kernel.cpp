@@ -339,13 +339,13 @@ vector<vector<vector<vector<int32_t>>>> convolution_kernel(
                               
                                 auto x = input[batch][in_channel][out_height * strides_h + filter_height][out_width * strides_w + filter_width];
                                
-                                if((bool)sign[out_channel][in_channel][filter_height][filter_width] && s >=0 ){
+                                if(sign[out_channel][in_channel][filter_height][filter_width] < 0 && s >=0 ){
                                     y -= (x << s);
                                 }
-                                else if(!(bool)sign[out_channel][in_channel][filter_height][filter_width] && s >=0){
+                                else if(sign[out_channel][in_channel][filter_height][filter_width] > 0 && s >=0){
                                     y += (x << s);
                                 }
-                                else if((bool)sign[out_channel][in_channel][filter_height][filter_width] && s <0){
+                                else if(sign[out_channel][in_channel][filter_height][filter_width] < 0 && s <0){
                                     y -= (x >> (-s));
                                 }
                                 else{

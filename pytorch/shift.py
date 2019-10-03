@@ -199,63 +199,49 @@ class Conv2dShiftFunction(Function):
         fraction_bits = 16
         integer_bits = 16
 
-        if use_kernel:
-            input_  = input.clone()
-            input_.data  = input_.data * (2 ** fraction_bits)
-            input_ = input_.int()
-
-            if bias is not None:
-                bias_ = bias.clone()
-                bias_.data = bias_.data * (2 ** fraction_bits)
-                bias_.data = bias_.data.int()
-        else:
-            input.data = round_to_fixed(input.data, fraction_bits, integer_bits)
-            if bias is not None:
-                bias.data = round_to_fixed(bias.data, fraction_bits, integer_bits)
- 
         sign = sign.clamp(-1,1)
 
         if use_kernel:
+            input_fixed_point = (input * (2 ** fraction_bits)).int()
+            if bias is not None:
+                bias_fixed_point = (bias * (2 ** fraction_bits)).int()
+
             if(use_cuda):
-                sign.data = sign.data.int()
-                shift.data = shift.data.int()
-                if padding_mode == 'circular':
-                    print('circular')
                 if len(padding) == 2:
                     padding = (padding[0], padding[0], padding[1], padding[1])
                 else:
                     padding = padding
-                input_ = F.pad(input = input_, pad = padding, mode = 'constant', value = 0)
+                input_fixed_point = F.pad(input = input_fixed_point, pad = padding, mode = 'constant', value = 0)
                 if len(stride) == 1:
                     strides_h = stride[0]
                     strides_w = stride[0]
                 else: 
                     strides_h = stride[0]
                     strides_w = stride[1]
-                out_height = int((input_.size(2) - shift.size(2)) / strides_h +1)
-                out_width = int((input_.size(3) - shift.size(3)) / strides_w +1)
-                out = torch.zeros([input_.size(0), shift.size(0), out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
+                out_height = int((input_fixed_point.size(2) - shift.size(2)) / strides_h +1)
+                out_width = int((input_fixed_point.size(3) - shift.size(3)) / strides_w +1)
+                out = torch.zeros([input_fixed_point.size(0), shift.size(0), out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
 
                 if bias is not None:
-                    shift_cuda_kernel.conv2d_shift(input_, shift, sign, bias_, out, stride, padding)
+                    shift_cuda_kernel.conv2d_shift(input_fixed_point, shift.int(), sign.int(), bias_fixed_point, out, stride, padding)
                 else:
                     temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                    shift_cuda_kernel.conv2d_shift(input_, shift, sign, temp, out, stride, padding)
+                    shift_cuda_kernel.conv2d_shift(input_fixed_point, shift.int(), sign.int(), temp, out, stride, padding)
                 out = out.float()
                 out = out / (2**fraction_bits)
-                
-                shift.data = shift.data.float()
-                sign.data = sign.data.float()
-
             else:
-                input_ = F.pad(input = input_, pad = padding, mode = 'constant', value = 0)
-                out = shift_kernel.convolution_kernel(input_.detach().numpy(), 
+                input_fixed_point = F.pad(input = input_fixed_point, pad = padding, mode = 'constant', value = 0)
+                out = shift_kernel.convolution_kernel(input_fixed_point.detach().numpy(), 
                     shift.detach().numpy(),
                     sign.detach().numpy(),
-                    bias_.detach().numpy(), stride, padding)
+                    bias_fixed_point.detach().numpy(), stride, padding)
                 out = torch.FloatTensor(out)
                 out = out / (2**fraction_bits)
         else:
+            input.data = round_to_fixed(input.data, fraction_bits, integer_bits)
+            if bias is not None:
+                bias.data = round_to_fixed(bias.data, fraction_bits, integer_bits)
+
             v = 2**shift.round() * sign.sign()
             out = F.conv2d(input, v, bias, stride, padding, dilation, groups)
 
