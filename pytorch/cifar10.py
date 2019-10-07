@@ -120,6 +120,8 @@ parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutil
                     help='For printing the weights of Model (default: True)')
 parser.add_argument('--desc', type=str, default=None,
                     help='description to append to model directory name')
+parser.add_argument('--use-kernel', type=lambda x:bool(distutils.util.strtobool(x)), default=False,
+                    help='whether using custom shift kernel')
 
 
 best_acc1 = 0
@@ -312,7 +314,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model.load_state_dict(new_state_dict)
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = (args.pretrained != "none" or args.weights))
+        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = (args.pretrained != "none" or args.weights), use_kernel = args.use_kernel)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -471,6 +473,8 @@ def main_worker(gpu, ngpus_per_node, args):
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
+    start_time = time.time()
+
     if args.evaluate:
         val_log = validate(val_loader, model, criterion, args)
         val_log = [val_log]
@@ -529,6 +533,9 @@ def main_worker(gpu, ngpus_per_node, args):
                     'optimizer' : optimizer.state_dict(),
                     'lr_scheduler' : lr_scheduler,
                 }, is_best, model_dir)
+
+    end_time = time.time()
+    print("Total Time:", end_time - start_time )
 
     if (args.print_weights):
         with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
