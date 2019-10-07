@@ -381,7 +381,9 @@ def main_worker(gpu, ngpus_per_node, args):
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
-    start = time.time()
+
+    start_time = time.time()
+
     if args.evaluate:
         start_log_time = time.time()
         val_log = validate(val_loader, model, criterion, args)
@@ -442,8 +444,10 @@ def main_worker(gpu, ngpus_per_node, args):
                     'optimizer' : optimizer.state_dict(),
                     'lr_scheduler' : lr_scheduler,
                 }, is_best, model_dir)
-    end = time.time()
-    print("use time:",end - start )
+
+    end_time = time.time()
+    print("Total Time:", end_time - start_time )
+
     if (args.print_weights):
         with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
             with redirect_stdout(weights_log_file):

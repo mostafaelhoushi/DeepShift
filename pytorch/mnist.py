@@ -239,7 +239,7 @@ def main():
 
     del model_tmp_copy
 
-    start = time.time()
+    start_time = time.time()
     if args.evaluate:
         test_loss, correct = test(args, model, device, test_loader, loss_fn)
         test_log = [(test_loss, correct/1e4)]
@@ -265,8 +265,10 @@ def main():
         torch.save(model, os.path.join(model_dir, "model.pt"))
         torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
         torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
-    end = time.time()
-    print("use time:",end - start )
+
+    end_time = time.time()
+    print("Total Time:", end_time - start_time )
+
     if (args.print_weights):
         # Print model's state_dict
         print("Model's state_dict:")
