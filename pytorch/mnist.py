@@ -217,10 +217,12 @@ def main():
     else:
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
-    # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
     model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
-    summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
-    print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+    try:
+        summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
+        print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+    except:
+        print("WARNING: Unable to obtain summary of model")
 
     model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
     if not os.path.isdir(model_dir):
@@ -229,9 +231,11 @@ def main():
     if (args.save_model):
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
-                # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
-                print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+                try:
+                    summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
+                    print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+                except:
+                    print("WARNING: Unable to obtain summary of model")
 
     del model_tmp_copy
 
