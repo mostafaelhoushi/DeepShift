@@ -282,7 +282,7 @@ class Conv2dShiftFunction(Function):
         if bias is not None and ctx.needs_input_grad[3]:
             grad_bias = grad_output.sum((0,2,3)).squeeze(0)
 
-        return grad_input, grad_shift, grad_sign, grad_bias, None, None, None, None, None
+        return grad_input, grad_shift, grad_sign, grad_bias, None, None, None, None, None, None
 
 class _ConvNdShift(nn.Module):
 

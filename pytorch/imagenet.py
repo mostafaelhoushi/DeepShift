@@ -63,6 +63,8 @@ parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
+parser.add_argument('-opt', '--optimizer', metavar='OPT', default="SGD", 
+                    help='optimizer algorithm')
 parser.add_argument('-b', '--batch-size', default=256, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
@@ -75,6 +77,8 @@ parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--lr-schedule', dest='lr_schedule', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='using learning rate schedule')
+parser.add_argument('--lr-sign', default=None, type=float,
+                    help='separate initial learning rate for sign params')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
@@ -115,7 +119,7 @@ parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutil
 parser.add_argument('--desc', type=str, default=None,
                     help='description to append to model directory name')
 parser.add_argument('--use-kernel', type=lambda x:bool(distutils.util.strtobool(x)), default=False,
-                        help='whether using custom shift kernel')
+                    help='whether using custom shift kernel')
 
 best_acc1 = 0
 
@@ -248,11 +252,41 @@ def main_worker(gpu, ngpus_per_node, args):
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
-    #optimizer = torch.optim.SGD(model.parameters(), args.lr,
-    #                            momentum=args.momentum,
-    #                            weight_decay=args.weight_decay)
-    optimizer = ranger.Ranger(model.parameters(), args.lr,
-                              weight_decay=args.weight_decay)
+    if args.lr_sign is None:
+        params_dict = model.parameters()
+    else:
+        model_non_sign_params = []
+        model_sign_params = []
+
+        for name, param in model.named_parameters():
+            if(name.endswith(".sign")):
+                model_sign_params.append(param)
+            else:
+                model_non_sign_params.append(param)
+
+        params_dict = [
+            {"params": model_non_sign_params},
+            {"params": model_sign_params, 'lr': args.lr_sign}
+            ]
+
+    # define optimizer
+    optimizer = None 
+    if(args.optimizer.lower() == "sgd"):
+        optimizer = torch.optim.SGD(params_dict, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "adadelta"):
+        optimizer = torch.optim.Adadelta(params_dict, args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "adagrad"):
+        optimizer = torch.optim.Adagrad(params_dict, args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "adam"):
+        optimizer = torch.optim.Adam(params_dict, args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "rmsprop"):
+        optimizer = torch.optim.RMSprop(params_dict, args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "radam"):
+        optimizer = radam.RAdam(params_dict, args.lr, weight_decay=args.weight_decay)
+    elif(args.optimizer.lower() == "ranger"):
+        optimizer = ranger.Ranger(params_dict, args.lr, weight_decay=args.weight_decay)
+    else:
+        raise ValueError("Optimizer type: ", args.optimizer, " is not supported or known")
 
     lr_scheduler = None
     if args.opt_ckpt:
