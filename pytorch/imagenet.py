@@ -252,6 +252,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
+    # handle separate learning rate for sign parameters
     if args.lr_sign is None:
         params_dict = model.parameters()
     else:
