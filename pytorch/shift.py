@@ -48,7 +48,7 @@ class LinearShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, use_kernel=False, use_cuda=True):
+    def forward(ctx, input, shift, sign, bias=None, use_kernel=False, use_cuda=True, update_sign=True):
         fraction_bits = 16
         integer_bit = 16
 
@@ -83,6 +83,7 @@ class LinearShiftFunction(Function):
                 out += bias.unsqueeze(0).expand_as(out)
 
         ctx.save_for_backward(input, shift, sign, bias)
+        ctx.update_sign = update_sign
 
         return out
 
@@ -95,6 +96,7 @@ class LinearShiftFunction(Function):
         # ignored, the return statement is simple even when the function has
         # optional inputs.
         input, shift, sign, bias = ctx.saved_tensors
+        update_sign = ctx.update_sign
         grad_input = grad_shift = grad_sign = grad_bias = None
 
         # These needs_input_grad checks are optional and there only to
@@ -107,14 +109,15 @@ class LinearShiftFunction(Function):
         if ctx.needs_input_grad[1]:
             grad_shift = grad_output.t().mm(input) * v * math.log(2)
         if ctx.needs_input_grad[2]:
-            grad_sign = grad_output.t().mm(input)
+            if update_sign:
+                grad_sign = grad_output.t().mm(input)
         if bias is not None and ctx.needs_input_grad[3]:
             grad_bias = grad_output.sum(0).squeeze(0)
 
-        return grad_input, grad_shift, grad_sign, grad_bias, None, None
+        return grad_input, grad_shift, grad_sign, grad_bias, None, None, None
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False, use_cuda=True):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False, use_cuda=True, sign_update_freq=1):
  
         super(LinearShift, self).__init__()
         self.in_features = in_features
@@ -122,6 +125,7 @@ class LinearShift(nn.Module):
         self.use_kernel = use_kernel
         self.check_grad = check_grad
         self.use_cuda = use_cuda
+        self.sign_update_freq = sign_update_freq
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -148,6 +152,7 @@ class LinearShift(nn.Module):
             self.register_parameter('bias', None)
 
         self.reset_parameters()
+        self.call_count = 0
 
     def reset_parameters(self):
         self.shift.data.uniform_(-10, -1) # (-0.1, 0.1)
@@ -159,7 +164,8 @@ class LinearShift(nn.Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
-        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias, self.use_kernel, self.use_cuda)
+        self.call_count += 1
+        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias, self.use_kernel, self.use_cuda, self.sign_update_freq%self.call_count == 0)
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -195,7 +201,7 @@ class Conv2dShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False):
+    def forward(ctx, input, shift, sign, bias=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False, update_sign=True):
         fraction_bits = 16
         integer_bits = 16
 
@@ -250,6 +256,7 @@ class Conv2dShiftFunction(Function):
         ctx.padding = padding 
         ctx.dilation = dilation
         ctx.groups = groups
+        ctx.update_sign = update_sign
 
         return out
 
@@ -266,6 +273,7 @@ class Conv2dShiftFunction(Function):
         padding = ctx.padding 
         dilation = ctx.dilation
         groups = ctx.groups
+        update_sign = ctx.update_sign
         grad_input = grad_shift = grad_sign = grad_bias = None
 
         # These needs_input_grad checks are optional and there only to
@@ -278,11 +286,12 @@ class Conv2dShiftFunction(Function):
         if ctx.needs_input_grad[1]:
             grad_shift = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) * v * math.log(2)
         if ctx.needs_input_grad[2]:
-            grad_sign = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) 
+            if update_sign:
+                grad_sign = torch.nn.grad.conv2d_weight(input, v.shape, grad_output, stride, padding, dilation, groups) 
         if bias is not None and ctx.needs_input_grad[3]:
             grad_bias = grad_output.sum((0,2,3)).squeeze(0)
 
-        return grad_input, grad_shift, grad_sign, grad_bias, None, None, None, None, None, None
+        return grad_input, grad_shift, grad_sign, grad_bias, None, None, None, None, None, None, None
 
 class _ConvNdShift(nn.Module):
 
@@ -290,7 +299,8 @@ class _ConvNdShift(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride,
                  padding, dilation, transposed, output_padding,
-                 groups, bias, padding_mode, check_grad=False):
+                 groups, bias, padding_mode, check_grad=False, 
+                 sign_update_freq=1):
         super(_ConvNdShift, self).__init__()
         if in_channels % groups != 0:
             raise ValueError('in_channels must be divisible by groups')
@@ -306,6 +316,7 @@ class _ConvNdShift(nn.Module):
         self.output_padding = output_padding
         self.groups = groups
         self.padding_mode = padding_mode
+        self.sign_update_freq = sign_update_freq
 
         if check_grad:
             tensor_constructor = torch.DoubleTensor # double precision required to check grad
@@ -326,7 +337,9 @@ class _ConvNdShift(nn.Module):
             self.bias = nn.Parameter(tensor_constructor(out_channels))
         else:
             self.register_parameter('bias', None)
+
         self.reset_parameters()
+        self.call_count = 0
 
     def reset_parameters(self):
         weights = torch.zeros_like(self.shift)
@@ -356,7 +369,7 @@ class _ConvNdShift(nn.Module):
 class Conv2dShift(_ConvNdShift):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros', check_grad=False, use_kernel=False,use_cuda =True):
+                 bias=True, padding_mode='zeros', check_grad=False, use_kernel=False, use_cuda =True, sign_update_freq=1):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
@@ -365,18 +378,21 @@ class Conv2dShift(_ConvNdShift):
         self.use_cuda = use_cuda
         super(Conv2dShift, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
-            False, _pair(0), groups, bias, padding_mode)
+            False, _pair(0), groups, bias, padding_mode, sign_update_freq=1)
 
     #@weak_script_method
     def forward(self, input):
+        self.call_count += 1
         if self.padding_mode == 'circular':
             expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
                                 (self.padding[0] + 1) // 2, self.padding[0] // 2)
             return Conv2dShiftFunction.apply(F.pad(input, expanded_padding, mode='circular'),
-                            self.shift, self.sign, self.bias, self.stride,
-                            _pair(0), self.dilation, self.groups, 
-                            self.use_kernel, self.use_cuda)
+                                            self.shift, self.sign, self.bias, self.stride,
+                                            _pair(0), self.dilation, self.groups, 
+                                            self.use_kernel, self.use_cuda, 
+                                            self.sign_update_freq%self.call_count == 0)
         else:
             return Conv2dShiftFunction.apply(input, self.shift, self.sign, self.bias, self.stride,
-                            self.padding, self.dilation, self.groups, 
-                            self.use_kernel, self.use_cuda)
+                                            self.padding, self.dilation, self.groups, 
+                                            self.use_kernel, self.use_cuda,
+                                            self.sign_update_freq%self.call_count == 0)

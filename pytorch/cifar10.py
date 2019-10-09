@@ -83,6 +83,8 @@ parser.add_argument('--lr-schedule', dest='lr_schedule', default=True, type=lamb
                     help='using learning rate schedule')
 parser.add_argument('--lr-sign', default=None, type=float,
                     help='separate initial learning rate for sign params')
+parser.add_argument('--sign-update-freq', default=1, type=int,
+                    help='only update sign every x epochs where x is the value of this argument')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
@@ -316,7 +318,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model.load_state_dict(new_state_dict)
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = (args.pretrained != "none" or args.weights), use_kernel = args.use_kernel)
+        model, _ = convert_to_shift(model, args.shift_depth, convert_weights = (args.pretrained != "none" or args.weights), use_kernel = args.use_kernel, sign_update_freq = args.sign_update_freq)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
