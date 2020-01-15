@@ -3,6 +3,10 @@
 
 This is a project is the implementation of the [DeepShift: Towards Multiplication-Less Neural Networks](https://arxiv.org/abs/1905.13298) paper, that aims to replace multiplications in a neural networks with bitwise shift (and sign change).
 
+![Main Concept of DeepShift](docs/mac2sac.png)
+![DeepShift-Q](docs/deepshift-q.png)
+![DeepShift-PS](docs/deepshift-ps.png)
+
 ### Important Notes
 - To use the DeepShift-PS, the `--optimizer` must be set to `radam` in order to obtain good results.
 - DeepShift-PS is currently much slower in training than DeepShift-Q, because it requries twice the number of parameters and twice the number of gradients. We're working on optimizing that by using lower precision type to represent their parameters and gradietns.
