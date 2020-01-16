@@ -71,11 +71,11 @@ python cifar10.py --arch resnet20 --pretrained False --shift-depth 1000 --shift-
 ```
 d) Train a DeepShift ResNet18 model on the Imagenet dataset using converted pretrained weights for 5 epochs with learning rate 0.001:
 ```
-python imagenet.py --arch resnet18 --pretrained True --shift-depth 1000 --epochs 5 --lr 0.001
+python imagenet.py <path to imagenet dataset> --arch resnet18 --pretrained True --shift-depth 1000 --epochs 5 --lr 0.001
 ```
 e) Train a DeepShift ResNet18 model on the Imagenet dataset from scratch with an initial learning rate of 0.01:
 ```
-python imagenet.py --arch resnet18 --pretrained False --shift-depth 1000 --lr 0.01
+python imagenet.py <path to imagenet dataset> --arch resnet18 --pretrained False --shift-depth 1000 --lr 0.01
 ```
 
 ## Code Walkthrough
