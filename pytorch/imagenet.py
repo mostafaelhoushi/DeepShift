@@ -57,7 +57,7 @@ parser.add_argument('--weights', default='', type=str, metavar='WEIGHTS_PATH',
                     help='path to file to load its weights (default: none)')
 parser.add_argument('-s', '--shift-depth', type=int, default=0,
                     help='how many layers to convert to shift')
-parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
+parser.add_argument('-st', '--shift-type', default='Q', choices=['Q', 'PS'],
                     help='type of DeepShift method for training and representing weights (default: PS)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
