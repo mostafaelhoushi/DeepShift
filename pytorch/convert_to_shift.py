@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 import numpy as np
-
+import shift_cuda_kernel
 import shift, shift_q
+import math
 from shift import round_to_fixed, get_shift_and_sign, round_power_of_2
 
 def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, convert_weights=False, freeze_sign = False, use_kernel=False, use_cuda=True):
@@ -26,6 +27,24 @@ def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, co
                 if convert_weights == True:
                     shift_linear.shift.data, shift_linear.sign.data = get_shift_and_sign(linear.weight)
                     shift_linear.bias = linear.bias
+                if use_cuda==True and use_kernel == True:
+                    ##concatenate shift and sign together
+                    shift_linear.bits = math.ceil(torch.log( - torch.min(shift_linear.shift.data) + 1)/ np.log(2))
+                    shift_linear.shift.data = shift_linear.shift.data * -1
+                    minimum = int(torch.min(shift_linear.shift.data))
+                    if minimum < 0:
+                        shift_linear.base = minimum
+                        shift_linear.shift.data = shift_linear.shift.data - minimum
+                    else :
+                        shift_linear.base = 0
+
+                    num = int(32 / (shift_linear.bits + 1))
+                    row_length = int((shift_linear.shift.shape[1] + num -1) / num )
+                    size = row_length * shift_linear.shift.shape[0]
+                    conc_weight = torch.zeros([size], dtype=torch.int32,device = torch.device('cuda:0'))
+                    shift_cuda_kernel.COMPRESS_SIGN_SHIFT(shift_linear.shift.int().cuda(), shift_linear.sign.int().cuda(), conc_weight, 0, shift_linear.bits, shift_linear.shift.shape[0], shift_linear.shift.shape[1], 1, 1, row_length, num)
+                    shift_linear.shift.data = conc_weight
+                    shift_linear.sign = None
             else:
                 raise ValueError('Unsupported shift_type argument: ', shift_type)
 
@@ -54,6 +73,24 @@ def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, co
                 if convert_weights == True:
                     shift_conv2d.shift.data, shift_conv2d.sign.data = get_shift_and_sign(conv2d.weight)
                     shift_conv2d.bias = conv2d.bias
+                if use_cuda==True and use_kernel == True:
+                    ##concatenate shift and sign together
+                    shift_conv2d.bits = math.ceil(torch.log( - torch.min(shift_conv2d.shift.data) + 1)/ np.log(2))
+                    shift_conv2d.shift.data = shift_conv2d.shift.data * -1
+                    minimum = int(torch.min(shift_conv2d.shift.data))
+                    if minimum < 0:
+                        shift_conv2d.base = minimum
+                        shift_conv2d.shift.data = shift_conv2d.shift.data - minimum
+                    else :
+                        shift_conv2d.base = 0
+
+                    num = int(32 / (shift_conv2d.bits + 1))
+                    row_length = int((shift_conv2d.shift.shape[1] * shift_conv2d.shift.shape[2] * shift_conv2d.shift.shape[3] + num -1) / num )
+                    size = row_length * shift_conv2d.shift.shape[0]
+                    conc_weight = torch.zeros([size], dtype=torch.int32,device = torch.device('cuda:0'))
+                    shift_cuda_kernel.COMPRESS_SIGN_SHIFT(shift_conv2d.shift.int().cuda(), shift_conv2d.sign.int().cuda(), conc_weight,  0, shift_conv2d.bits, shift_conv2d.shift.shape[0], shift_conv2d.shift.shape[1], shift_conv2d.shift.shape[2], shift_conv2d.shift.shape[3], row_length, num)
+                    shift_conv2d.shift.data = conc_weight
+                    shift_conv2d.sign = None
 
             model._modules[name] = shift_conv2d
             conversion_count += 1

@@ -16,6 +16,7 @@ import mnist
 import copy
 
 import shift
+from cuda_kernel import convert_to_unoptimized
 from convert_to_shift import convert_to_shift, round_shift_weights
 
 class LinearMNIST(nn.Module):
@@ -197,6 +198,9 @@ def main():
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda)
         model = model.to(device)
+    elif args.use_kernel and args.shift_depth == 0:
+        model = convert_to_unoptimized(model)
+        model = model.to(device)
     
     loss_fn = F.cross_entropy # F.nll_loss
     # define optimizer
@@ -238,34 +242,36 @@ def main():
         model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
 
     # if evaluating round weights to ensure that the results are due to powers of 2 weights
-    if (args.evaluate):
-        model = round_shift_weights(model)
+    if not args.use_kernel:
+        if (args.evaluate):
+            model = round_shift_weights(model)
 
-    model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
-    try:
-        summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
-        print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
-    except:
-        print("WARNING: Unable to obtain summary of model")
+    if not args.use_kernel:
+        model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
+        try:
+            summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
+            print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+        except:
+            print("WARNING: Unable to obtain summary of model")
 
-    model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
-    if not os.path.isdir(model_dir):
-        os.makedirs(model_dir, exist_ok=True)
+        model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "mnist"), model_name)
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir, exist_ok=True)
 
-    if (args.save_model):
-        with open(os.path.join(model_dir, 'command_args.txt'), 'w') as command_args_file:
-            for arg, value in sorted(vars(args).items()):
-                command_args_file.write(arg + ": " + str(value) + "\n")
+        if (args.save_model):
+            with open(os.path.join(model_dir, 'command_args.txt'), 'w') as command_args_file:
+                for arg, value in sorted(vars(args).items()):
+                    command_args_file.write(arg + ": " + str(value) + "\n")
 
-        with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
-            with redirect_stdout(summary_file):
-                try:
-                    summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
-                    print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
-                except:
-                    print("WARNING: Unable to obtain summary of model")
+            with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
+                with redirect_stdout(summary_file):
+                    try:
+                        summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
+                        print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+                    except:
+                        print("WARNING: Unable to obtain summary of model")
 
-    del model_tmp_copy
+        del model_tmp_copy
 
     start_time = time.time()
     if args.evaluate:

@@ -48,11 +48,11 @@ class LinearShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, use_kernel=False, use_cuda=True):
+    def forward(ctx, input, shift, sign, out_features, in_features, bias=None, use_kernel=False, use_cuda=True, base = 0, bits = 8):
         fraction_bits = 16
         integer_bit = 16
 
-        sign = sign.clamp(-1,1)
+        
    
         if use_kernel:
             input_fixed_point = (input * (2 ** fraction_bits)).int()
@@ -60,12 +60,12 @@ class LinearShiftFunction(Function):
                 bias_fixed_point = (bias * (2 ** fraction_bits)).int()
 
             if(use_cuda):         
-                out = torch.zeros([input.size(0), shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+                out = torch.zeros([input.size(0), out_features], dtype=torch.int32, device=torch.device('cuda:0'))
                 if bias is not None:
-                    shift_cuda_kernel.linear_shift(input_fixed_point, shift.int(), sign.int(), bias_fixed_point, out)
+                    shift_cuda_kernel.DEEP_SHIFT_LINEAR(input_fixed_point, shift, bias_fixed_point, out, base, bits, out_features)
                 else:
                     temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                    shift_cuda_kernel.linear_shift(input_fixed_point, shift.int(), sign.int(), temp, out)
+                    shift_cuda_kernel.DEEP_SHIFT_LINEAR(input_fixed_point, shift, temp, out, base, bits, out_features)
                 out = out.float()
                 out = out / (2**fraction_bits)
             else:
@@ -73,6 +73,7 @@ class LinearShiftFunction(Function):
                 out = torch.FloatTensor(nn)
                 out = out / (2**fraction_bits)
         else:
+            sign = sign.clamp(-1,1)
             input.data = round_to_fixed(input.data, fraction_bits, integer_bit)
             if bias is not None:
                 bias.data = round_to_fixed(bias.data, fraction_bits, integer_bit)
@@ -116,7 +117,7 @@ class LinearShiftFunction(Function):
         return grad_input, grad_shift, grad_sign, grad_bias, None, None
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False, freeze_sign=False, use_kernel=False, use_cuda=True):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, freeze_sign=False, use_kernel=False, use_cuda=True, base = 0, bits =8):
  
         super(LinearShift, self).__init__()
         self.in_features = in_features
@@ -124,6 +125,8 @@ class LinearShift(nn.Module):
         self.use_kernel = use_kernel
         self.check_grad = check_grad
         self.use_cuda = use_cuda
+        self.base = base
+        self.bits = bits
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -159,7 +162,7 @@ class LinearShift(nn.Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
-        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias, self.use_kernel, self.use_cuda)
+        return LinearShiftFunction.apply(input, self.shift, self.sign, self.out_features, self.in_features, self.bias, self.use_kernel, self.use_cuda, self.base, self.bits)
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -188,11 +191,11 @@ class Conv2dShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False):
+    def forward(ctx, input, shift, sign, out_channels,in_channels, kernel_size, bias=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False, base =0, bits =8):
         fraction_bits = 16
         integer_bits = 16
 
-        sign = sign.clamp(-1,1)
+        
 
         if use_kernel:
             input_fixed_point = (input * (2 ** fraction_bits)).int()
@@ -211,15 +214,15 @@ class Conv2dShiftFunction(Function):
                 else: 
                     strides_h = stride[0]
                     strides_w = stride[1]
-                out_height = int((input_fixed_point.size(2) - shift.size(2)) / strides_h +1)
-                out_width = int((input_fixed_point.size(3) - shift.size(3)) / strides_w +1)
-                out = torch.zeros([input_fixed_point.size(0), shift.size(0), out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
+                out_height = int((input_fixed_point.size(2) - kernel_size[0]) / strides_h +1)
+                out_width = int((input_fixed_point.size(3) - kernel_size[1]) / strides_w +1)
+                out = torch.zeros([input_fixed_point.size(0), out_channels, out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
 
                 if bias is not None:
-                    shift_cuda_kernel.conv2d_shift(input_fixed_point, shift.int(), sign.int(), bias_fixed_point, out, stride, padding)
+                    shift_cuda_kernel.DEEP_SHIFT_CONV(input_fixed_point,shift, bias_fixed_point, out, stride, padding,  kernel_size[0], kernel_size[1], base, bits)
                 else:
-                    temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
-                    shift_cuda_kernel.conv2d_shift(input_fixed_point, shift.int(), sign.int(), temp, out, stride, padding)
+                    temp = torch.zeros([out_channels], dtype=torch.int32, device=torch.device('cuda:0'))
+                    shift_cuda_kernel.DEEP_SHIFT_CONV(input_fixed_point,shift,temp, out, stride, padding,  kernel_size[0], kernel_size[1], base, bits)
                 out = out.float()
                 out = out / (2**fraction_bits)
             else:
@@ -231,6 +234,7 @@ class Conv2dShiftFunction(Function):
                 out = torch.FloatTensor(out)
                 out = out / (2**fraction_bits)
         else:
+            sign = sign.clamp(-1,1)
             input.data = round_to_fixed(input.data, fraction_bits, integer_bits)
             if bias is not None:
                 bias.data = round_to_fixed(bias.data, fraction_bits, integer_bits)
@@ -287,7 +291,7 @@ class _ConvNdShift(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride,
                  padding, dilation, transposed, output_padding,
                  groups, bias, padding_mode, 
-                 check_grad=False, freeze_sign=False):
+                 check_grad=False, freeze_sign=False, base = 0, bits = 8):
         super(_ConvNdShift, self).__init__()
         if in_channels % groups != 0:
             raise ValueError('in_channels must be divisible by groups')
@@ -355,17 +359,19 @@ class Conv2dShift(_ConvNdShift):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros', 
-                 check_grad=False, freeze_sign=False, use_kernel=False,use_cuda =True):
+                 check_grad=False, freeze_sign=False, use_kernel=False,use_cuda =True, base =0, bits =8):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
         self.use_kernel = use_kernel
         self.use_cuda = use_cuda
+        self.base = base
+        self.bits = bits
         super(Conv2dShift, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), groups, bias, padding_mode,
-            check_grad, freeze_sign)
+            check_grad, freeze_sign, base,bits)
 
     #@weak_script_method
     def forward(self, input):
@@ -373,10 +379,10 @@ class Conv2dShift(_ConvNdShift):
             expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
                                 (self.padding[0] + 1) // 2, self.padding[0] // 2)
             return Conv2dShiftFunction.apply(F.pad(input, expanded_padding, mode='circular'),
-                            self.shift, self.sign, self.bias, self.stride,
+                            self.shift, self.sign, self.out_channels, self.in_channels,self.kernel_size, self.bias, self.stride,
                             _pair(0), self.dilation, self.groups, 
-                            self.use_kernel, self.use_cuda)
+                            self.use_kernel, self.use_cuda,self.base, self.bits)
         else:
-            return Conv2dShiftFunction.apply(input, self.shift, self.sign, self.bias, self.stride,
+            return Conv2dShiftFunction.apply(input, self.shift, self.sign, self.out_channels, self.in_channels,self.kernel_size, self.bias, self.stride,
                             self.padding, self.dilation, self.groups, 
-                            self.use_kernel, self.use_cuda)
+                            self.use_kernel, self.use_cuda,self.base, self.bits)

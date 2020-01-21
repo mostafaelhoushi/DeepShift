@@ -12,3 +12,15 @@ setup(
     cmdclass={
         'build_ext': BuildExtension
     })
+
+setup(
+    name='unoptimized_cuda_kernel',
+    ext_modules=[
+        CUDAExtension('unoptimized_cuda_kernel', [
+            'unoptimized_cuda.cpp',
+            'unoptimized_cuda_kernel.cu',
+        ],extra_compile_args=['-O3'])
+    ],
+    cmdclass={
+        'build_ext': BuildExtension
+    })
