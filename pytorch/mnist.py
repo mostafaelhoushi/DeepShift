@@ -278,10 +278,10 @@ def main():
         test_loss, correct = test(args, model, device, test_loader, loss_fn)
         test_log = [(test_loss, correct/1e4)]
 
-        with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
-            test_log_csv = csv.writer(test_log_file)
-            test_log_csv.writerow(['test_loss', 'correct'])
-            test_log_csv.writerows(test_log)
+        # with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
+        #     test_log_csv = csv.writer(test_log_file)
+        #     test_log_csv.writerow(['test_loss', 'correct'])
+        #     test_log_csv.writerows(test_log)
     else:
         train_log = []
         for epoch in range(1, args.epochs + 1):
@@ -306,24 +306,24 @@ def main():
             train_log_csv.writerow(['epoch', 'train_loss', 'test_loss', 'test_accuracy'])
             train_log_csv.writerows(train_log)
 
-    if (args.save_model):
-        torch.save(model, os.path.join(model_dir, "model.pt"))
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+    # if (args.save_model):
+    #     torch.save(model, os.path.join(model_dir, "model.pt"))
+    #     torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
+    #     torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
 
     end_time = time.time()
     print("Total Time:", end_time - start_time )
 
-    if (args.print_weights):
-        with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
-            with redirect_stdout(weights_log_file):
-                # Log model's state_dict
-                print("Model's state_dict:")
-                # TODO: Use checkpoint above
-                for param_tensor in model.state_dict():
-                    print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-                    print(model.state_dict()[param_tensor])
-                    print("")
+    # if (args.print_weights):
+    #     with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
+    #         with redirect_stdout(weights_log_file):
+    #             # Log model's state_dict
+    #             print("Model's state_dict:")
+    #             # TODO: Use checkpoint above
+    #             for param_tensor in model.state_dict():
+    #                 print(param_tensor, "\t", model.state_dict()[param_tensor].size())
+    #                 print(model.state_dict()[param_tensor])
+    #                 print("")
         
 if __name__ == '__main__':
     main()

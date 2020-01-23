@@ -72,6 +72,7 @@ class LinearShiftFunction(Function):
                 nn = shift_kernel.linear_kernel(input_fixed_point.detach().numpy(), shift.detach().numpy(), sign.detach().numpy(), bias_fixed_point.detach().numpy())
                 out = torch.FloatTensor(nn)
                 out = out / (2**fraction_bits)
+            ctx.save_for_backward(input, shift, sign, bias)
         else:
             sign = sign.clamp(-1,1)
             input.data = round_to_fixed(input.data, fraction_bits, integer_bit)
@@ -83,7 +84,7 @@ class LinearShiftFunction(Function):
             if bias is not None:
                 out += bias.unsqueeze(0).expand_as(out)
 
-        ctx.save_for_backward(input, shift, sign, bias, v)
+            ctx.save_for_backward(input, shift, sign, bias, v)
 
         return out
 
@@ -233,6 +234,7 @@ class Conv2dShiftFunction(Function):
                     bias_fixed_point.detach().numpy(), stride, padding)
                 out = torch.FloatTensor(out)
                 out = out / (2**fraction_bits)
+            ctx.save_for_backward(input, shift, sign, bias)
         else:
             sign = sign.clamp(-1,1)
             input.data = round_to_fixed(input.data, fraction_bits, integer_bits)
@@ -243,7 +245,7 @@ class Conv2dShiftFunction(Function):
                 v = 2**shift.round() * sign.round().sign()
                 out = F.conv2d(input, v, bias, stride, padding, dilation, groups)
 
-        ctx.save_for_backward(input, shift, sign, bias, v)
+            ctx.save_for_backward(input, shift, sign, bias, v)
         ctx.stride = stride
         ctx.padding = padding 
         ctx.dilation = dilation
