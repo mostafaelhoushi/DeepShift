@@ -82,7 +82,7 @@ class LinearShiftFunction(Function):
             if bias is not None:
                 out += bias.unsqueeze(0).expand_as(out)
 
-        ctx.save_for_backward(input, shift, sign, bias, v)
+            ctx.save_for_backward(input, shift, sign, bias, v)
 
         return out
 
