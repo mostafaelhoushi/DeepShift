@@ -8,9 +8,6 @@ googleapis-common-protos==1.5.9
 grpcio==1.19.0
 h5py==2.9.0
 idna==2.8
-Keras==2.2.4
-Keras-Applications==1.0.7
-Keras-Preprocessing==1.0.9
 Markdown==3.1
 mock==2.0.0
 numpy==1.16.2
@@ -25,11 +22,6 @@ requests==2.21.0
 scipy==1.2.1
 six==1.12.0
 tensorboard==1.13.1
-tensorflow==1.13.1
-tensorflow-datasets==1.0.1
-tensorflow-estimator==1.13.0
-tensorflow-gpu==1.13.1
-tensorflow-metadata==0.13.0
 termcolor==1.1.0
 torch==1.1.0
 torchvision==0.2.2.post3
