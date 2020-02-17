@@ -26,9 +26,19 @@ import torchvision.datasets as datasets
 from torchsummary import summary
 import optim
 
-from convert_to_shift import convert_to_shift, round_shift_weights, count_layer_type
+from deepshift.convert import convert_to_shift, round_shift_weights, count_layer_type
+from unoptimized.convert import convert_to_unoptimized
 
 import cifar10_models as models
+
+'''
+Unfortunately, none of the pytorch repositories with ResNets on CIFAR10 provides an 
+implementation as described in the original paper. If you just use the torchvision's 
+models on CIFAR10 you'll get the model that differs in number of layers and parameters. 
+This is unacceptable if you want to directly compare ResNet-s on CIFAR10 with the 
+original paper. The purpose of resnet_cifar10 (which has been obtained from https://github.com/akamaster/pytorch_resnet_cifar10
+is to provide a valid pytorch implementation of ResNet-s for CIFAR10 as described in the original paper. 
+'''
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -46,8 +56,8 @@ parser.add_argument('--weights', default='', type=str, metavar='WEIGHTS_PATH',
                     help='path to file to load its weights (default: none)')
 parser.add_argument('-s', '--shift-depth', type=int, default=0,
                     help='how many layers to convert to shift')
-parser.add_argument('-st', '--shift-type', default='Q', choices=['Q', 'PS'],
-                    help='type of DeepShift method for training and representing weights (default: Q)')
+parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
+                    help='type of DeepShift method for training and representing weights (default: PS)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',

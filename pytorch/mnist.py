@@ -3,7 +3,6 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim
 import optim
 from torchvision import datasets, transforms
 import csv
@@ -15,8 +14,9 @@ from torchsummary import summary
 import mnist
 import copy
 
-import shift
-from convert_to_shift import convert_to_shift, round_shift_weights
+import deepshift
+from deepshift.convert import convert_to_shift, round_shift_weights
+from unoptimized.convert import convert_to_unoptimized
 
 class LinearMNIST(nn.Module):
     def __init__(self):
@@ -81,9 +81,7 @@ def test(args, model, device, test_loader, loss_fn):
             test_loss += loss_fn(output, target, reduction='sum').item() # sum up batch loss
             pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
-
     test_loss /= len(test_loader.dataset)
-
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
@@ -104,8 +102,8 @@ def main():
                         help='path to file to load its weights (default: none)')
     parser.add_argument('--shift-depth', type=int, default=0,
                         help='how many layers to convert to shift')
-    parser.add_argument('-st', '--shift-type', default='Q', choices=['Q', 'PS'],
-                        help='type of DeepShift method for training and representing weights (default: Q)')
+    parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
+                        help='type of DeepShift method for training and representing weights (default: PS)')
     parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
                         help='number of data loading workers (default: 1)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -143,6 +141,9 @@ def main():
                         help='whether using custom shift kernel')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
+
+    if(args.evaluate is False and args.use_kernel is True):
+        raise ValueError('Our custom kernel currently supports inference only, not training.')
     
     torch.manual_seed(args.seed)
 
@@ -180,8 +181,10 @@ def main():
             model = ConvMNIST().to(device)
 
         if args.pretrained:
-            model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pt"))
+            model.load_state_dict(torch.load("./models/mnist/simple_" + args.type + "/shift_0/weights.pth"))
             model = model.to(device)
+    
+    model_rounded = None
 
     if args.weights:
         saved_weights = torch.load(args.weights)
@@ -196,6 +199,12 @@ def main():
 
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda)
+        model = model.to(device)
+    elif args.use_kernel and args.shift_depth == 0:
+        model = convert_to_unoptimized(model)
+        model = model.to(device)
+    elif args.use_kernel and args.shift_depth == 0:
+        model = convert_to_unoptimized(model)
         model = model.to(device)
     
     loss_fn = F.cross_entropy # F.nll_loss
@@ -265,13 +274,12 @@ def main():
                 except:
                     print("WARNING: Unable to obtain summary of model")
 
-    del model_tmp_copy
+    # del model_tmp_copy
 
     start_time = time.time()
     if args.evaluate:
         test_loss, correct = test(args, model, device, test_loader, loss_fn)
         test_log = [(test_loss, correct/1e4)]
-
         with open(os.path.join(model_dir, "test_log.csv"), "w") as test_log_file:
             test_log_csv = csv.writer(test_log_file)
             test_log_csv.writerow(['test_loss', 'correct'])
@@ -300,24 +308,29 @@ def main():
             train_log_csv.writerow(['epoch', 'train_loss', 'test_loss', 'test_accuracy'])
             train_log_csv.writerows(train_log)
 
-    if (args.save_model):
-        torch.save(model, os.path.join(model_dir, "model.pt"))
-        torch.save(model.state_dict(), os.path.join(model_dir, "weights.pt"))
-        torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pt"))
+        if (args.save_model):
+            model_rounded = round_shift_weights(model, clone=True)
+
+            torch.save(model_rounded, os.path.join(model_dir, "model.pth"))
+            torch.save(model_rounded.state_dict(), os.path.join(model_dir, "weights.pth"))
 
     end_time = time.time()
     print("Total Time:", end_time - start_time )
 
     if (args.print_weights):
+        if(model_rounded is None):
+            model_rounded = round_shift_weights(model, clone=True)
+
         with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
             with redirect_stdout(weights_log_file):
                 # Log model's state_dict
                 print("Model's state_dict:")
                 # TODO: Use checkpoint above
-                for param_tensor in model.state_dict():
-                    print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-                    print(model.state_dict()[param_tensor])
+                for param_tensor in model_rounded.state_dict():
+                    print(param_tensor, "\t", model_rounded.state_dict()[param_tensor].size())
+                    print(model_rounded.state_dict()[param_tensor])
                     print("")
         
 if __name__ == '__main__':
     main()
+    torch.cuda.empty_cache()

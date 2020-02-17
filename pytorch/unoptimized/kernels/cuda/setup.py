@@ -2,11 +2,11 @@ from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 setup(
-    name='shift_cuda_kernel',
+    name='unoptimized_cuda',
     ext_modules=[
-        CUDAExtension('shift_cuda_kernel', [
-            'shift_cuda.cpp',
-            'shift_cuda_kernel.cu',
+        CUDAExtension('unoptimized_cuda', [
+            'unoptimized_cuda.cpp',
+            'unoptimized.cu',
         ],extra_compile_args=['-O3'])
     ],
     cmdclass={

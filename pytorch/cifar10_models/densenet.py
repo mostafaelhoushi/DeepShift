@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-__all__ = ['densenet121', 'densenet169', 'densenet201', 'densenet264']
+__all__ = ['densenet40', 'densenet121', 'densenet169', 'densenet201', 'densenet264']
 
 """
 densenet with basic block.
@@ -128,6 +128,9 @@ class densenet(nn.Module):
         x = self.fc(x)
 
         return x
+
+def densenet40():
+    return densenet(depth=40)
 
 def densenet121():
     return densenet(depth=121)

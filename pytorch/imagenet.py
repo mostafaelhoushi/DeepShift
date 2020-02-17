@@ -26,7 +26,9 @@ from torchsummary import summary
 import optim
 import copy
 
-from convert_to_shift import convert_to_shift, count_layer_type, round_shift_weights
+from deepshift.convert import convert_to_shift, round_shift_weights, count_layer_type
+from unoptimized.convert import convert_to_unoptimized
+
 import customized_models
 
 default_model_names = sorted(name for name in models.__dict__
@@ -57,8 +59,8 @@ parser.add_argument('--weights', default='', type=str, metavar='WEIGHTS_PATH',
                     help='path to file to load its weights (default: none)')
 parser.add_argument('-s', '--shift-depth', type=int, default=0,
                     help='how many layers to convert to shift')
-parser.add_argument('-st', '--shift-type', default='Q', choices=['Q', 'PS'],
-                    help='type of DeepShift method for training and representing weights (default: Q)')
+parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
+                    help='type of DeepShift method for training and representing weights (default: PS)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N',
@@ -94,7 +96,7 @@ parser.add_argument('--resume', default='', type=str, metavar='CHECKPOINT_PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='only evaluate model on validation set')
-parser.add_argument('--pretrained', dest='pretrained', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+parser.add_argument('--pretrained', dest='pretrained', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='use pre-trained model')
 parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
@@ -116,7 +118,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 
 parser.add_argument('--save-model', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='For Saving the current Model (default: True)')
-parser.add_argument('--print-weights', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
+parser.add_argument('--print-weights', default=False, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='For printing the weights of Model (default: True)')
 parser.add_argument('--desc', type=str, default=None,
                     help='description to append to model directory name')
@@ -128,6 +130,9 @@ best_acc1 = 0
 
 def main():
     args = parser.parse_args()
+
+    if(args.evaluate is False and args.use_kernel is True):
+        raise ValueError('Our custom kernel currently supports inference only, not training.')
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -199,6 +204,8 @@ def main_worker(gpu, ngpus_per_node, args):
         print("=> creating model '{}'".format(args.arch))
         model = models.__dict__[args.arch]()
 
+    model_rounded = None
+
     if args.weights:
         saved_weights = torch.load(args.weights)
         if isinstance(saved_weights, nn.Module):
@@ -221,6 +228,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     if args.shift_depth > 0:
         model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_weights = args.pretrained or args.weights, freeze_sign = (args.lr_sign == 0), use_kernel = args.use_kernel)
+    elif args.use_kernel and args.shift_depth == 0:
+        model = convert_to_unoptimized(model)
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -350,12 +359,12 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
-    model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
-    try:
-        summary(model_tmp_copy, input_size=(3, 224, 224))
-        print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
-    except:
-        print("WARNING: Unable to obtain summary of model")
+    # model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
+    # try:
+    #     summary(model_tmp_copy, input_size=(3, 224, 224))
+    #     print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+    # except:
+    #     print("WARNING: Unable to obtain summary of model")
 
     # name model sub-directory "shift_all" if all layers are converted to shift layers
     conv2d_layers_count = count_layer_type(model, nn.Conv2d)
@@ -384,16 +393,16 @@ def main_worker(gpu, ngpus_per_node, args):
             for arg, value in sorted(vars(args).items()):
                 command_args_file.write(arg + ": " + str(value) + "\n")
 
-        with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
-            with redirect_stdout(summary_file):
-                try:
-                    # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
-                    summary(model_tmp_copy, input_size=(3, 224, 224))
-                    print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
-                except:
-                    print("WARNING: Unable to obtain summary of model")
+    #     with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
+    #         with redirect_stdout(summary_file):
+    #             try:
+    #                 # TODO: make this summary function deal with parameters that are not named "weight" and "bias"
+    #                 summary(model_tmp_copy, input_size=(3, 224, 224))
+    #                 print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
+    #             except:
+    #                 print("WARNING: Unable to obtain summary of model")
 
-    del model_tmp_copy # to save memory
+    # del model_tmp_copy # to save memory
 
     # Data loading code
     traindir = os.path.join(args.data, 'train')
@@ -488,9 +497,10 @@ def main_worker(gpu, ngpus_per_node, args):
                 if is_best:
                     try:
                         if (args.save_model):
-                            torch.save(model.state_dict(), os.path.join(model_dir, "weights.pth"))
-                            torch.save(optimizer.state_dict(), os.path.join(model_dir, "optimizer.pth"))
-                            torch.save(model, os.path.join(model_dir, "model.pth"))
+                            model_rounded = round_shift_weights(model, clone=True)
+
+                            torch.save(model_rounded.state_dict(), os.path.join(model_dir, "weights.pth"))
+                            torch.save(model_rounded, os.path.join(model_dir, "model.pth"))
                     except: 
                         print("WARNING: Unable to save model.pth")
                 
@@ -507,14 +517,17 @@ def main_worker(gpu, ngpus_per_node, args):
     print("Total Time:", end_time - start_time )
 
     if (args.print_weights):
+        if(model_rounded is None):
+            model_rounded = round_shift_weights(model, clone=True)
+
         with open(os.path.join(model_dir, 'weights_log.txt'), 'w') as weights_log_file:
             with redirect_stdout(weights_log_file):
                 # Log model's state_dict
                 print("Model's state_dict:")
                 # TODO: Use checkpoint above
-                for param_tensor in model.state_dict():
-                    print(param_tensor, "\t", model.state_dict()[param_tensor].size())
-                    print(model.state_dict()[param_tensor])
+                for param_tensor in model_rounded.state_dict():
+                    print(param_tensor, "\t", model_rounded.state_dict()[param_tensor].size())
+                    print(model_rounded.state_dict()[param_tensor])
                     print("")
 
 

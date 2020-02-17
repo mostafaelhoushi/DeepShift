@@ -373,7 +373,7 @@ vector<vector<vector<vector<int32_t>>>> convolution_kernel(
     return output;
 }
 
-PYBIND11_MODULE(shift_kernel, m) {
+PYBIND11_MODULE(deepshift_cpu, m) {
     m.def("linear_kernel", &linear_kernel, "linear_kernel");
     m.def("convolution_kernel", &convolution_kernel, "convolution_kernel");
 }
