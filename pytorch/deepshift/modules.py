@@ -20,7 +20,7 @@ class LinearShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, conc_weight=None, use_kernel=False, use_cuda=True):
+    def forward(ctx, input, shift, sign, bias=None, conc_weight=None, use_kernel=False, use_cuda=True, rounding='deterministic', shift_range=(-14, 0)):
         fraction_bits = 16
         integer_bit = 16
         
@@ -34,6 +34,7 @@ class LinearShiftFunction(Function):
             out = out / (2**fraction_bits)
         else:
             sign = sign.clamp(-1,1)
+            shift = shift.clamp(*shift_range)
             input.data = utils.round_to_fixed(input.data, fraction_bits, integer_bit)
             if bias is not None:
                 bias.data = utils.round_to_fixed(bias.data, fraction_bits, integer_bit)
@@ -77,7 +78,7 @@ class LinearShiftFunction(Function):
         return grad_input, grad_shift, grad_sign, grad_bias, None, None, None
 
 class LinearShift(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False, freeze_sign=False, use_kernel=False, use_cuda=True):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, freeze_sign=False, use_kernel=False, use_cuda=True, rounding='deterministic', weight_bits=5):
         super(LinearShift, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -85,6 +86,8 @@ class LinearShift(nn.Module):
         self.check_grad = check_grad
         self.use_cuda = use_cuda
         self.conc_weight = None
+        self.rounding = rounding
+        self.shift_range = (-1 * (2**(weight_bits - 1) - 2), 0) # we use ternary weights to represent sign
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -111,8 +114,8 @@ class LinearShift(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.shift.data.uniform_(-10, -1) # (-0.1, 0.1)
-        self.sign.data.uniform_(-1, 1) # (-0.1, 0.1)
+        self.shift.data.uniform_(*self.shift_range) 
+        self.sign.data.uniform_(-1, 1) 
         
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.shift)
@@ -120,7 +123,15 @@ class LinearShift(nn.Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
-        return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias, self.conc_weight, self.use_kernel, self.use_cuda)
+        self.shift.data = ste.clamp(self.shift.data, *self.shift_range)
+        shift_rounded = ste.round(self.shift, rounding=self.rounding)
+        sign_rounded_signed = ste.sign(ste.round(self.sign, rounding=self.rounding))
+        weight_ps = ste.unsym_grad_mul(2**shift_rounded, sign_rounded_signed)
+
+        if self.use_kernel:
+            return LinearShiftFunction.apply(input, self.shift, self.sign, self.bias, self.conc_weight, self.use_kernel, self.use_cuda, self.rounding, self.shift_range)
+        else:
+            return torch.nn.functional.linear(input, weight_ps, self.bias)
 
     def extra_repr(self):
         # (Optional)Set the extra information about this module. You can test
@@ -135,7 +146,7 @@ class Conv2dShiftFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, shift, sign, bias=None, conc_weight=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False):
+    def forward(ctx, input, shift, sign, bias=None, conc_weight=None, stride=1, padding=0, dilation=1, groups=1, use_kernel=False, use_cuda=False, rounding='deterministic', shift_range=(-14,0)):
         fraction_bits = 16
         integer_bits = 16
 
@@ -152,13 +163,16 @@ class Conv2dShiftFunction(Function):
             out = out.float()
             out = out / (2**fraction_bits)               
         else:
+            shift = shift.clamp(*shift_range)
             sign = sign.clamp(-1,1)
             input.data = utils.round_to_fixed(input.data, fraction_bits, integer_bits)
 
             if bias is not None:
                 bias.data = utils.round_to_fixed(bias.data, fraction_bits, integer_bits)
 
-            v = 2**shift.round() * sign.round().sign()
+            shift_rounded = utils.round(self.shift, stochastic=False)
+            sign_rounded_signed = torch.sign(utils.round(self.sign, stochastic=False))
+            v = 2**shift_rounded * sign_rounded_signed
             out = F.conv2d(input, v, bias, stride, padding, dilation, groups)
 
             ctx.save_for_backward(input, shift, sign, bias, v)
@@ -209,7 +223,8 @@ class _ConvNdShift(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride,
                  padding, dilation, transposed, output_padding,
                  groups, bias, padding_mode, 
-                 check_grad=False, freeze_sign=False):
+                 check_grad=False, freeze_sign=False,
+                 rounding='deterministic', weight_bits=5):
         super(_ConvNdShift, self).__init__()
         if in_channels % groups != 0:
             raise ValueError('in_channels must be divisible by groups')
@@ -225,6 +240,8 @@ class _ConvNdShift(nn.Module):
         self.output_padding = output_padding
         self.groups = groups
         self.padding_mode = padding_mode
+        self.rounding=rounding
+        self.shift_range = (-1 * (2**(weight_bits - 1) - 2), 0) # we use ternary weights to represent sign
 
         if check_grad:
             tensor_constructor = torch.DoubleTensor # double precision required to check grad
@@ -252,6 +269,7 @@ class _ConvNdShift(nn.Module):
     def reset_parameters(self):
         self.shift.data.uniform_(-10, -1) # (-0.1, 0.1)
         self.sign.data.uniform_(-1, 1) # (-0.1, 0.1)
+        
         if self.bias is not None:
             fan_in, _ = init._calculate_fan_in_and_fan_out(self.shift)
             bound = 1 / math.sqrt(fan_in)
@@ -275,7 +293,8 @@ class _ConvNdShift(nn.Module):
 class Conv2dShift(_ConvNdShift):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
-                 bias=True, padding_mode='zeros', check_grad=False, freeze_sign=False, use_kernel=False, use_cuda=True):
+                 bias=True, padding_mode='zeros', 
+                 check_grad=False, freeze_sign=False, use_kernel=False, use_cuda=True, rounding='determinstic', weight_bits=5):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
@@ -286,13 +305,14 @@ class Conv2dShift(_ConvNdShift):
         super(Conv2dShift, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), groups, bias, padding_mode, 
-            check_grad, freeze_sign)
+            check_grad, freeze_sign, rounding, weight_bits)
 
     #@weak_script_method
     def forward(self, input):
-        shift_rounded = ste.round(self.shift)
-        sign_rounded_signed = ste.sign(ste.round(self.sign))
-        weight_ps = ste.unsym_grad_mul(2**shift_rounded, sign_rounded_signed) # 2**utils.stochastic_rounding(shift) * sign.round().sign()
+        self.shift.data = ste.clamp(self.shift.data, *self.shift_range)
+        shift_rounded = ste.round(self.shift, self.rounding)
+        sign_rounded_signed = ste.sign(ste.round(self.sign, self.rounding))
+        weight_ps = ste.unsym_grad_mul(2**shift_rounded, sign_rounded_signed)
         input_fixed_point = ste.round_fixed_point(input)
         if self.bias is not None:
             bias_fixed_point = ste.round_fixed_point(self.bias)
@@ -312,20 +332,7 @@ class Conv2dShift(_ConvNdShift):
         if self.use_kernel:
             return Conv2dShiftFunction.apply(input_padded, self.shift, self.sign, bias_fixed_point, self.conc_weight, 
                                               self.stride, padding, self.dilation, self.groups, 
-                                              self.use_kernel, self.use_cuda)
+                                              self.use_kernel, self.use_cuda, self.rounding, self.shift_range)
         else:
             return torch.nn.functional.conv2d(input_padded, weight_ps, bias_fixed_point, 
                                               self.stride, padding, self.dilation, self.groups)
-        '''
-        if self.padding_mode == 'circular':
-            expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
-                                (self.padding[0] + 1) // 2, self.padding[0] // 2)
-            return Conv2dShiftFunction.apply(F.pad(input, expanded_padding, mode='circular'),
-                            self.shift, self.sign, self.bias, self.conc_weight, 
-                            self.stride, _pair(0), self.dilation, self.groups, 
-                            self.use_kernel, self.use_cuda, self.conc_weight)
-        else:
-            return Conv2dShiftFunction.apply(input, self.shift, self.sign, self.bias, self.conc_weight, 
-                            self.stride, self.padding, self.dilation, self.groups, 
-                            self.use_kernel, self.use_cuda)
-        '''

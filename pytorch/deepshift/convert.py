@@ -8,18 +8,18 @@ import deepshift.modules
 import deepshift.modules_q
 import deepshift.utils as utils
 
-def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, convert_weights=False, freeze_sign = False, use_kernel=False, use_cuda=True):
+def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, convert_weights=False, freeze_sign = False, use_kernel=False, use_cuda=True, rounding='deterministic', weight_bits=5):
     conversion_count = 0
     for name, module in reversed(model._modules.items()):
         if len(list(module.children())) > 0:
             # recurse
-            model._modules[name], num_converted = convert_to_shift(model=module, shift_depth=shift_depth-conversion_count, shift_type=shift_type, convert_all_linear=convert_all_linear, convert_weights=convert_weights, freeze_sign = freeze_sign, use_kernel=use_kernel, use_cuda = use_cuda)
+            model._modules[name], num_converted = convert_to_shift(model=module, shift_depth=shift_depth-conversion_count, shift_type=shift_type, convert_all_linear=convert_all_linear, convert_weights=convert_weights, freeze_sign = freeze_sign, use_kernel=use_kernel, use_cuda = use_cuda, rounding = rounding, weight_bits = weight_bits)
             conversion_count += num_converted
         if type(module) == nn.Linear and (convert_all_linear == True or conversion_count < shift_depth):
             linear = module
         
             if shift_type == 'Q':
-                shift_linear = deepshift.modules_q.LinearShiftQ(module.in_features, module.out_features, module.bias is not None, use_kernel=use_kernel, use_cuda = use_cuda) 
+                shift_linear = deepshift.modules_q.LinearShiftQ(module.in_features, module.out_features, module.bias is not None, use_kernel=use_kernel, use_cuda=use_cuda, rounding=rounding, weight_bits=weight_bits) 
                 shift_linear.weight = linear.weight
                 if linear.bias is not None:
                     shift_linear.bias.data = utils.round_to_fixed(linear.bias, fraction=16, integer=16)
@@ -27,7 +27,7 @@ def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, co
                 if use_cuda==True and use_kernel == True:
                     shift_linear.conc_weight = utils.compress_bits(*utils.get_shift_and_sign(linear.weight))
             elif shift_type == 'PS':
-                shift_linear = deepshift.modules.LinearShift(module.in_features, module.out_features, module.bias is not None, freeze_sign = freeze_sign, use_kernel=use_kernel, use_cuda = use_cuda)
+                shift_linear = deepshift.modules.LinearShift(module.in_features, module.out_features, module.bias is not None, freeze_sign = freeze_sign, use_kernel=use_kernel, use_cuda=use_cuda, rounding=rounding, weight_bits=weight_bits)
 
                 if convert_weights == True:
                     shift_linear.shift.data, shift_linear.sign.data = utils.get_shift_and_sign(linear.weight)
@@ -49,7 +49,8 @@ def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, co
                 shift_conv2d = deepshift.modules_q.Conv2dShiftQ(module.in_channels, module.out_channels, module.kernel_size, module.stride,
                                                 module.padding, module.dilation, module.groups,
                                                 module.bias is not None, module.padding_mode, 
-                                                use_kernel=use_kernel, use_cuda=use_cuda) 
+                                                use_kernel=use_kernel, use_cuda=use_cuda,
+                                                rounding=rounding, weight_bits=weight_bits) 
                 shift_conv2d.weight = conv2d.weight
                 if conv2d.bias is not None:
                     shift_conv2d.bias.data = utils.round_to_fixed(conv2d.bias, fraction=16, integer=16)
@@ -61,7 +62,8 @@ def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, co
                 shift_conv2d = deepshift.modules.Conv2dShift(module.in_channels, module.out_channels, module.kernel_size, module.stride,
                                                 module.padding, module.dilation, module.groups,
                                                 module.bias is not None, module.padding_mode,
-                                                freeze_sign=freeze_sign, use_kernel=use_kernel, use_cuda=use_cuda)
+                                                freeze_sign=freeze_sign, use_kernel=use_kernel, use_cuda=use_cuda,
+                                                rounding=rounding, weight_bits=weight_bits)
 
                 if convert_weights == True:
                     shift_conv2d.shift.data, shift_conv2d.sign.data = utils.get_shift_and_sign(conv2d.weight)

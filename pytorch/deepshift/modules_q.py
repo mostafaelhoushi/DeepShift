@@ -17,11 +17,11 @@ class LinearShiftQFunction(Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
     # bias is an optional argument
-    def forward(ctx, input, weight, bias=None, conc_weight=None, use_kernel=False, use_cuda=True):
+    def forward(ctx, input, weight, bias=None, conc_weight=None, use_kernel=False, use_cuda=True, rounding='deterministic', shift_range=(0,-15)):
         fraction_bits = 16
         integer_bit = 16
 
-        shift, sign = utils.get_shift_and_sign(weight)
+        shift, sign = utils.get_shift_and_sign(weight, rounding)
    
         if use_kernel:
             input_fixed_point = (input * (2 ** fraction_bits)).int()
@@ -70,7 +70,7 @@ class LinearShiftQFunction(Function):
         return grad_input, grad_weight, grad_bias, None, None
 
 class LinearShiftQ(nn.Module):
-    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False, use_cuda=True):
+    def __init__(self, in_features, out_features, bias=True, check_grad=False, use_kernel=False, use_cuda=True, rounding='deterministic', weight_bits=5):
  
         super(LinearShiftQ, self).__init__()
         self.in_features = in_features
@@ -79,6 +79,9 @@ class LinearShiftQ(nn.Module):
         self.check_grad = check_grad
         self.use_cuda = use_cuda
         self.conc_weight = None
+        self.rounding = rounding
+        self.shift_range = (-1 * (2**(weight_bits - 1) - 1), 0) # we use binary weights to represent sign
+
         # nn.Parameter is a special kind of Tensor, that will get
         # automatically registered as Module's parameter once it's assigned
         # as an attribute. Parameters and buffers need to be registered, or
@@ -112,7 +115,8 @@ class LinearShiftQ(nn.Module):
             init.uniform_(self.bias, -bound, bound)
 
     def forward(self, input):
-        weight_q = ste.round_power_of_2(self.weight)
+        self.weight.data = ste.clampabs(self.weight.data, 2**self.shift_range[0], 2**self.shift_range[1])
+        weight_q = ste.round_power_of_2(self.weight, self.rounding)
         input_fixed_point = ste.round_fixed_point(input)
         if self.bias is not None:
             bias_fixed_point = ste.round_fixed_point(self.bias)
@@ -145,7 +149,7 @@ class Conv2dShiftQFunction(Function):
         fraction_bits = 16
         integer_bits = 16
 
-        shift, sign = utils.get_shift_and_sign(weight)
+        shift, sign = utils.get_shift_and_sign(weight, rounding='deterministic')
 
         if use_kernel:
             input_fixed_point = (input * (2 ** fraction_bits)).int()
@@ -205,7 +209,8 @@ class _ConvNdShiftQ(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride,
                  padding, dilation, transposed, output_padding,
                  groups, bias, padding_mode, 
-                 check_grad=False):
+                 check_grad=False,
+                 rounding='deterministic', weight_bits=5):
         super(_ConvNdShiftQ, self).__init__()
         if in_channels % groups != 0:
             raise ValueError('in_channels must be divisible by groups')
@@ -231,6 +236,8 @@ class _ConvNdShiftQ(nn.Module):
             self.bias = nn.Parameter(torch.Tensor(out_channels))
         else:
             self.register_parameter('bias', None)
+        self.rounding = rounding
+        self.shift_range = (-1 * (2**(weight_bits - 1) - 1), 0) # we use binary weights to represent sign
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -259,7 +266,8 @@ class Conv2dShiftQ(_ConvNdShiftQ):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1,
                  bias=True, padding_mode='zeros', 
-                 check_grad=False, use_kernel=False, use_cuda =True):
+                 check_grad=False, use_kernel=False, use_cuda =True,
+                 rounding='deterministic', weight_bits=5):
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
@@ -270,11 +278,13 @@ class Conv2dShiftQ(_ConvNdShiftQ):
         super(Conv2dShiftQ, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,
             False, _pair(0), groups, bias, padding_mode,
-            check_grad)
+            check_grad,
+            rounding, weight_bits)
 
     #@weak_script_method
-    def forward(self, input):       
-        weight_q = ste.round_power_of_2(self.weight)
+    def forward(self, input):
+        self.weight.data = ste.clampabs(self.weight.data, 2**self.shift_range[0], 2**self.shift_range[1])     
+        weight_q = ste.round_power_of_2(self.weight, self.rounding)
         input_fixed_point = ste.round_fixed_point(input)
         if self.bias is not None:
             bias_fixed_point = ste.round_fixed_point(self.bias)

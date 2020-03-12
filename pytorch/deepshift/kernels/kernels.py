@@ -11,11 +11,11 @@ def linear(input, shift, sign, bias=None, conc_weight=None, use_cuda=True):
     if(use_cuda):   
         assert(conc_weight is not None)
         # start_time = time.time()      
-        out = torch.zeros([input.size(0), shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+        out = torch.zeros([input.size(0), shift.size(0)], dtype=torch.int32, device=input.device)
         if bias is not None:
             deepshift_cuda.DEEP_SHIFT_LINEAR(input, conc_weight.data, bias, out, conc_weight.base, conc_weight.bits, shift.size(0))
         else:
-            temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=torch.device('cuda:0'))
+            temp = torch.zeros([shift.size(0)], dtype=torch.int32, device=input.device)
             deepshift_cuda.DEEP_SHIFT_LINEAR(input, conc_weight.data, temp, out, conc_weight.base, conc_weight.bits, shift.size(0))
         # end_time = time.time()
         # print("Linear Time:", end_time - start_time )    
@@ -44,12 +44,12 @@ def conv2d(input, shift, sign, bias=None, conc_weight=None, stride=1, padding=0,
         out_height = int((input.size(2) - kernel_size[0]) / strides_h +1)
         out_width = int((input.size(3) - kernel_size[1]) / strides_w +1)
         out_channels = shift.size(0)
-        out = torch.zeros([input.size(0), out_channels, out_height, out_width], dtype=torch.int32, device=torch.device('cuda:0'))
+        out = torch.zeros([input.size(0), out_channels, out_height, out_width], dtype=torch.int32, device=input.device)
 
         if bias is not None:
             deepshift_cuda.DEEP_SHIFT_CONV(input, conc_weight.data, bias, out, stride, padding, kernel_size[0], kernel_size[1], conc_weight.base, conc_weight.bits)
         else:
-            temp = torch.zeros([out_channels], dtype=torch.int32, device=torch.device('cuda:0'))
+            temp = torch.zeros([out_channels], dtype=torch.int32, device=input.device)
             deepshift_cuda.DEEP_SHIFT_CONV(input, conc_weight.data, temp, out, stride, padding, kernel_size[0], kernel_size[1], conc_weight.base, conc_weight.bits)
         # end_time = time.time()
         # print("Conv Time:", end_time - start_time )

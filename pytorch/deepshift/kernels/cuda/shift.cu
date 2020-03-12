@@ -10,6 +10,8 @@
 #define MAX_BLOCKS 65535
 #define ZERO_BASE 1
 #define NON_ZERO_BASE 0
+#define BIT_1 1
+#define BIT_2 2
 #define BIT_3 3
 #define BIT_4 4
 #define BIT_5 5
@@ -19,6 +21,8 @@
 #define NUM_5 5
 #define NUM_6 6
 #define NUM_8 8
+#define NUM_10 10
+#define NUM_16 16
 
 __device__ int COMPRESS(const int* __restrict__ shift, const int* __restrict__ sign, int length, int base, int bits)
 {
@@ -187,7 +191,61 @@ void DEEP_SHIFT_LINEAR_GPU(
     int num = int(MAX_BITS / (bits + 1));
     int comm = (input.size(1) + num - 1) / num;
     int max =(comm + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    if(bits == 3) {
+    if(bits == 1) {
+        if(base == 0){
+            AT_DISPATCH_INTEGRAL_TYPES(input.type(), "linear shift kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_16, BIT_1, 0x01,0x02, ZERO_BASE><<<gridDim, blockDim>>>(
+                    input.data<int>(),
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    output.data<int>(),
+                    input.size(1),
+                    input.size(0),
+                    out_features, base,max, comm * num);
+              }));
+        }
+        else {
+            AT_DISPATCH_INTEGRAL_TYPES(input.type(), "linear shift kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_16, BIT_1, 0x01,0x02, NON_ZERO_BASE><<<gridDim, blockDim>>>(
+                    input.data<int>(),
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    output.data<int>(),
+                    input.size(1),
+                    input.size(0),
+                    out_features, base,max, comm * num);
+              }));
+        }
+
+    }
+    else if(bits == 2) {
+        if(base == 0){
+            AT_DISPATCH_INTEGRAL_TYPES(input.type(), "linear shift kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_10, BIT_2, 0x03,0x04, ZERO_BASE><<<gridDim, blockDim>>>(
+                    input.data<int>(),
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    output.data<int>(),
+                    input.size(1),
+                    input.size(0),
+                    out_features, base,max, comm * num);
+              }));
+        }
+        else {
+            AT_DISPATCH_INTEGRAL_TYPES(input.type(), "linear shift kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_10, BIT_2, 0x03,0x04, NON_ZERO_BASE><<<gridDim, blockDim>>>(
+                    input.data<int>(),
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    output.data<int>(),
+                    input.size(1),
+                    input.size(0),
+                    out_features, base,max, comm * num);
+              }));
+        }
+
+    }
+    else if(bits == 3) {
         if(base == 0){
             AT_DISPATCH_INTEGRAL_TYPES(input.type(), "linear shift kernel", ([&] {
                 DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_8, BIT_3, 0x07,0x08, ZERO_BASE><<<gridDim, blockDim>>>(
@@ -400,7 +458,62 @@ void DEEP_SHIFT_CONV_GPU(torch::Tensor data_im,
     int comm = (k + num -1 ) / num;
     int max =(comm + BLOCK_SIZE - 1) / BLOCK_SIZE;
     cudaMalloc(&out_col,  num_patch * filter_patch * sizeof(int));
-    if(bits == 3) {
+
+    if(bits == 1) {
+        if(base == 0){
+            AT_DISPATCH_INTEGRAL_TYPES(data_im.type(), "DEEP_SHIFT_GEMM_GPU_KERNEL kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_16, BIT_1, 0x01,0x02, ZERO_BASE><<<gridDim, blockDim>>>(
+                    data_col,
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    out_col,
+                    k,
+                    num_patch,
+                    filter_patch, base,max,comm * num);
+              }));
+        }
+        else {
+            AT_DISPATCH_INTEGRAL_TYPES(data_im.type(), "DEEP_SHIFT_GEMM_GPU_KERNEL kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_16, BIT_1, 0x01,0x02, NON_ZERO_BASE><<<gridDim, blockDim>>>(
+                    data_col,
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    out_col,
+                    k,
+                    num_patch,
+                    filter_patch, base,max,comm * num);
+              }));
+        }
+
+    }
+    else if(bits == 2) {
+        if(base == 0){
+            AT_DISPATCH_INTEGRAL_TYPES(data_im.type(), "DEEP_SHIFT_GEMM_GPU_KERNEL kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_10, BIT_2, 0x03,0x04, ZERO_BASE><<<gridDim, blockDim>>>(
+                    data_col,
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    out_col,
+                    k,
+                    num_patch,
+                    filter_patch, base,max,comm * num);
+              }));
+        }
+        else {
+            AT_DISPATCH_INTEGRAL_TYPES(data_im.type(), "DEEP_SHIFT_GEMM_GPU_KERNEL kernel", ([&] {
+                DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_10, BIT_2, 0x03,0x04, NON_ZERO_BASE><<<gridDim, blockDim>>>(
+                    data_col,
+                    shift.data<int>(),
+                    bias.data<int>(),
+                    out_col,
+                    k,
+                    num_patch,
+                    filter_patch, base,max,comm * num);
+              }));
+        }
+
+    }
+    else if(bits == 3) {
         if(base == 0){
             AT_DISPATCH_INTEGRAL_TYPES(data_im.type(), "DEEP_SHIFT_GEMM_GPU_KERNEL kernel", ([&] {  
                 DEEP_SHIFT_GEMM_GPU_KERNEL<NUM_8, BIT_3, 0x07,0x08, ZERO_BASE><<<gridDim, blockDim>>>(
