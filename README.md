@@ -41,16 +41,8 @@ We present 2 approaches:
 ## Getting Started
 1. Clone the repo:
 ```
-git -c lfs.url=http://ptlab01.huawei.com:31337/ clone git@rnd-gitlab-ca.huawei.com:Do4AI/DeepShift.git
+git clone https://github.com/mostafaelhoushi/DeepShift.git
 ```
-
-git will prompt interactively for the username and password with which to access ptlab01.huawei.com.
-
-Save the LFS URL in the clone's settings:
-```
-git config lfs.url http://ptlab01.huawei.com:31337/
-```
-
 2. Change directory
 ```
 cd DeepShift
