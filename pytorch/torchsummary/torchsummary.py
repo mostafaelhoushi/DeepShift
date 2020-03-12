@@ -5,9 +5,18 @@ from torch.autograd import Variable
 from collections import OrderedDict
 import numpy as np
 
+def summary(model, input_size, batch_size=-1, device=torch.device('cuda:0'), dtypes=None):
+    result, params_info = summary_string(
+        model, input_size, batch_size, device, dtypes)
+    print(result)
 
-def summary(model, input_size, batch_size=-1, device="cuda"):
+    return params_info
 
+def summary_string(model, input_size, batch_size=-1, device="cuda", dtypes=None):
+    if dtypes == None:
+        dtypes = [torch.FloatTensor]*len(input_size)
+
+    summary_str = ""
     def register_hook(module):
 
         def hook(module, input, output):
@@ -96,16 +105,18 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
 
     # make a forward pass
     # print(x.shape)
+    model.eval()
     model(*x)
 
     # remove these hooks
     for h in hooks:
         h.remove()
 
-    print("----------------------------------------------------------------")
-    line_new = "{:>20}  {:>25} {:>15}".format("Layer (type)", "Output Shape", "Param #")
-    print(line_new)
-    print("================================================================")
+    summary_str += "----------------------------------------------------------------" + "\n"
+    line_new = "{:>20}  {:>25} {:>15}".format(
+        "Layer (type)", "Output Shape", "Param #")
+    summary_str += line_new + "\n"
+    summary_str += "================================================================" + "\n"
     total_params = 0
     total_params_bits = 0
     total_output = 0
@@ -123,7 +134,7 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
                 trainable_params += summary[layer]["nb_params"]
-        print(line_new)
+        summary_str += line_new + "\n"
 
     # assume 4 bytes/number (float on cuda).
     total_input_size = abs(np.prod(input_size) * batch_size * 4. / (1024 ** 2.))
@@ -131,14 +142,16 @@ def summary(model, input_size, batch_size=-1, device="cuda"):
     total_params_size = abs(total_params_bits.numpy() / (8. * (1024 ** 2.)))
     total_size = total_params_size + total_output_size + total_input_size
 
-    print("================================================================")
-    print("Total params: {0:,}".format(total_params))
-    print("Trainable params: {0:,}".format(trainable_params))
-    print("Non-trainable params: {0:,}".format(total_params - trainable_params))
-    print("----------------------------------------------------------------")
-    print("Input size (MB): %0.2f" % total_input_size)
-    print("Forward/backward pass size (MB): %0.2f" % total_output_size)
-    print("Params size (MB): %0.2f" % total_params_size)
-    print("Estimated Total Size (MB): %0.2f" % total_size)
-    print("----------------------------------------------------------------")
-    # return summary
+    summary_str += "================================================================" + "\n"
+    summary_str += "Total params: {0:,}".format(total_params) + "\n"
+    summary_str += "Trainable params: {0:,}".format(trainable_params) + "\n"
+    summary_str += "Non-trainable params: {0:,}".format(total_params -
+                                                        trainable_params) + "\n"
+    summary_str += "----------------------------------------------------------------" + "\n"
+    summary_str += "Input size (MB): %0.2f" % total_input_size + "\n"
+    summary_str += "Forward/backward pass size (MB): %0.2f" % total_output_size + "\n"
+    summary_str += "Params size (MB): %0.2f" % total_params_size + "\n"
+    summary_str += "Estimated Total Size (MB): %0.2f" % total_size + "\n"
+    summary_str += "----------------------------------------------------------------" + "\n"
+    
+    return summary_str, (total_params, trainable_params)

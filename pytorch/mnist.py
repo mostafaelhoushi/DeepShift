@@ -10,12 +10,13 @@ import distutils
 import os
 from contextlib import redirect_stdout
 import time
-from torchsummary import summary
+import torchsummary
 import mnist
 import copy
 
 import deepshift
-from deepshift.convert import convert_to_shift, round_shift_weights
+import unoptimized
+from deepshift.convert import convert_to_shift, round_shift_weights, count_layer_type
 from unoptimized.convert import convert_to_unoptimized
 
 class LinearMNIST(nn.Module):
@@ -104,6 +105,10 @@ def main():
                         help='how many layers to convert to shift')
     parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
                         help='type of DeepShift method for training and representing weights (default: PS)')
+    parser.add_argument('-r', '--rounding', default='deterministic', choices=['deterministic', 'stochastic'],
+                        help='type of rounding (default: deterministic)')
+    parser.add_argument('-wb', '--weight-bits', type=int, default=5,
+                        help='number of bits to represent the shift weights') 
     parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
                         help='number of data loading workers (default: 1)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -198,7 +203,7 @@ def main():
         model.load_state_dict(state_dict)
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda)
+        model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda, rounding = args.rounding, weight_bits = args.weight_bits)
         model = model.to(device)
     elif args.use_kernel and args.shift_depth == 0:
         model = convert_to_unoptimized(model)
@@ -241,18 +246,43 @@ def main():
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
-    if args.desc is not None and len(args.desc) > 0:
-        model_name = 'simple_%s/%s_shift_%s' % (args.type, args.desc, args.shift_depth)
+    # name model sub-directory "shift_all" if all layers are converted to shift layers
+    conv2d_layers_count = count_layer_type(model, nn.Conv2d) + count_layer_type(model, unoptimized.UnoptimizedConv2d)
+    linear_layers_count = count_layer_type(model, nn.Linear) + count_layer_type(model, unoptimized.UnoptimizedLinear)
+    if (args.shift_depth > 0):
+        if (args.shift_type == 'Q'):
+            shift_label = "shift_q"
+        else:
+            shift_label = "shift_ps"
     else:
-        model_name = 'simple_%s/shift_%s' % (args.type, args.shift_depth)
+        shift_label = "shift"
+
+    # name model sub-directory "shift_all" if all layers are converted to shift layers
+    conv2d_layers_count = count_layer_type(model, nn.Conv2d)
+    linear_layers_count = count_layer_type(model, nn.Linear)
+    if (conv2d_layers_count==0 and linear_layers_count==0):
+        shift_label += "_all"
+    else:
+        shift_label += "_%s" % (args.shift_depth)
+
+    if (args.shift_depth > 0):
+        shift_label += "_wb_%s" % (args.weight_bits)
+
+    if (args.desc is not None and len(args.desc) > 0):
+        desc_label = "_%s" % (args.desc)
+    else:
+        desc_label = ""
+
+    model_name = 'simple_%s/%s%s' % (args.type, shift_label, desc_label)
 
     # if evaluating round weights to ensure that the results are due to powers of 2 weights
     if (args.evaluate):
         model = round_shift_weights(model)
 
-    model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
+    model_summary = None
     try:
-        summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
+        model_summary, model_params_info = torchsummary.summary_string(model, input_size=(1,28,28))
+        print(model_summary)
         print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
     except:
         print("WARNING: Unable to obtain summary of model")
@@ -268,10 +298,10 @@ def main():
 
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
-                try:
-                    summary(model_tmp_copy, input_size=(1, 28, 28), device=("cuda" if use_cuda else "cpu"))
+                if (model_summary is not None):
+                    print(model_summary)
                     print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
-                except:
+                else:
                     print("WARNING: Unable to obtain summary of model")
 
     # del model_tmp_copy

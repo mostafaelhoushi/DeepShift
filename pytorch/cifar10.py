@@ -23,11 +23,12 @@ import torch.utils.data.distributed
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-from torchsummary import summary
+import torchsummary
 import optim
 
 from deepshift.convert import convert_to_shift, round_shift_weights, count_layer_type
 from unoptimized.convert import convert_to_unoptimized
+import unoptimized
 
 import cifar10_models as models
 
@@ -58,6 +59,10 @@ parser.add_argument('-s', '--shift-depth', type=int, default=0,
                     help='how many layers to convert to shift')
 parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
                     help='type of DeepShift method for training and representing weights (default: PS)')
+parser.add_argument('-r', '--rounding', default='deterministic', choices=['deterministic', 'stochastic'],
+                    help='type of rounding (default: deterministic)')
+parser.add_argument('-wb', '--weight-bits', type=int, default=5,
+                    help='number of bits to represent the shift weights')                    
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=200, type=int, metavar='N',
@@ -77,6 +82,8 @@ parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--lr-schedule', dest='lr_schedule', default=True, type=lambda x:bool(distutils.util.strtobool(x)), 
                     help='using learning rate schedule')
+parser.add_argument('--lr-step-size', default=None, type=int,
+                    help='number of epochs to decay learning rate by factor of 10')
 parser.add_argument('--lr-sign', default=None, type=float,
                     help='separate initial learning rate for sign params')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
@@ -230,7 +237,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model.load_state_dict(new_state_dict)
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_weights = (args.pretrained != "none" or args.weights), use_kernel = args.use_kernel)
+        model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_weights = (args.pretrained != "none" or args.weights), use_kernel = args.use_kernel, rounding = args.rounding, weight_bits = args.weight_bits)
     elif args.use_kernel and args.shift_depth == 0:
         model = convert_to_unoptimized(model)
 
@@ -307,8 +314,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # define learning rate schedule
     if (args.lr_schedule):
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                            milestones=[80, 120, 160, 180], last_epoch=args.start_epoch - 1)
+        if (args.lr_step_size is not None):
+            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=args.lr_step_size)
+        else:
+            lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                                milestones=[80, 120, 160, 180], last_epoch=args.start_epoch - 1)
 
     if args.arch in ['resnet1202', 'resnet110']:
         # for resnet1202 original paper uses lr=0.01 for first 400 minibatches for warm-up
@@ -339,20 +349,22 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
-    model_tmp_copy = copy.deepcopy(model) # we noticed calling summary() on original model degrades it's accuracy. So we will call summary() on a copy of the model
+    model_summary = None
     try:
-        if (args.gpu is not None):
-            model_tmp_copy.cuda(args.gpu)
-        summary(model_tmp_copy, input_size=(3, 32, 32))
+        model_summary, model_params_info = torchsummary.summary_string(model, input_size=(3,32,32))
+        print(model_summary)
         print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
     except:
         print("WARNING: Unable to obtain summary of model")
 
     # name model sub-directory "shift_all" if all layers are converted to shift layers
-    conv2d_layers_count = count_layer_type(model, nn.Conv2d)
-    linear_layers_count = count_layer_type(model, nn.Linear)
-    if (args.shift_type == 'Q'):
-        shift_label = "shift_q"
+    conv2d_layers_count = count_layer_type(model, nn.Conv2d) + count_layer_type(model, unoptimized.UnoptimizedConv2d)
+    linear_layers_count = count_layer_type(model, nn.Linear) + count_layer_type(model, unoptimized.UnoptimizedLinear)
+    if (args.shift_depth > 0):
+        if (args.shift_type == 'Q'):
+            shift_label = "shift_q"
+        else:
+            shift_label = "shift_ps"
     else:
         shift_label = "shift"
 
@@ -361,10 +373,15 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         shift_label += "_%s" % (args.shift_depth)
 
-    if args.desc is not None and len(args.desc) > 0:
-        model_name = '%s/%s_%s' % (args.arch, args.desc, shift_label)
+    if (args.shift_depth > 0):
+        shift_label += "_wb_%s" % (args.weight_bits)
+
+    if (args.desc is not None and len(args.desc) > 0):
+        desc_label = "_%s" % (args.desc)
     else:
-        model_name = '%s/%s' % (args.arch, shift_label)
+        desc_label = ""
+
+    model_name = '%s/%s%s' % (args.arch, shift_label, desc_label)
 
     if (args.save_model):
         model_dir = os.path.join(os.path.join(os.path.join(os.getcwd(), "models"), "cifar10"), model_name)
@@ -377,13 +394,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
         with open(os.path.join(model_dir, 'model_summary.txt'), 'w') as summary_file:
             with redirect_stdout(summary_file):
-                try:
-                    summary(model_tmp_copy, input_size=(3, 32, 32))
+                if (model_summary is not None):
+                    print(model_summary)
                     print("WARNING: The summary function reports duplicate parameters for multi-GPU case")
-                except:
+                else:
                     print("WARNING: Unable to obtain summary of model")
-
-    del model_tmp_copy # to save memory
 
     # Data loading code
     data_dir = "~/pytorch_datasets"
