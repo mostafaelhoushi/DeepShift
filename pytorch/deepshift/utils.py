@@ -4,12 +4,12 @@ import math
 
 import deepshift.kernels
 
-def round_to_fixed(input, fraction=16, integer=16): 
-    assert integer >= 1, integer 
-    if integer == 1: 
+def round_to_fixed(input, fraction_bits=16, integer_bits=16): 
+    assert integer_bits >= 1, integer_bits 
+    if integer_bits == 1: 
         return torch.sign(input) - 1 
-    delta = math.pow(2.0, -(fraction))
-    bound = math.pow(2.0, integer-1) 
+    delta = math.pow(2.0, -(fraction_bits))
+    bound = math.pow(2.0, integer_bits-1) 
     min_val = - bound 
     max_val = bound - 1 
     rounded = torch.floor(input / delta) * delta
