@@ -53,7 +53,7 @@ def convert_to_shift(model, shift_depth, shift_type, convert_all_linear=True, co
                                                 rounding=rounding, weight_bits=weight_bits) 
                 shift_conv2d.weight = conv2d.weight
                 if conv2d.bias is not None:
-                    shift_conv2d.bias.data = utils.round_to_fixed(conv2d.bias, fraction=16, integer=16)
+                    shift_conv2d.bias.data = utils.round_to_fixed(conv2d.bias, fraction_bits=16, integer_bits=16)
 
                 if use_cuda==True and use_kernel == True:
                     shift_conv2d.conc_weight = utils.compress_bits(*utils.get_shift_and_sign(conv2d.weight))
@@ -91,12 +91,12 @@ def round_shift_weights(model, clone=False):
             module.sign.data = module.sign.round().sign()
 
             if (module.bias is not None):
-                module.bias.data = utils.round_to_fixed(module.bias, fraction=16, integer=16)
+                module.bias.data = utils.round_to_fixed(module.bias, fraction_bits=16, integer_bits=16)
         elif type(module) == deepshift.modules_q.LinearShiftQ or type(module) == deepshift.modules_q.Conv2dShiftQ:
             module.weight.data = utils.round_power_of_2(module.weight)
 
             if (module.bias is not None):
-                module.bias.data = utils.round_to_fixed(module.bias, fraction=16, integer=16)
+                module.bias.data = utils.round_to_fixed(module.bias, fraction_bits=16, integer_bits=16)
 
     return model
 
