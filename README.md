@@ -84,6 +84,10 @@ cd pytorch
     ```
     python imagenet.py <path to imagenet dataset> --arch resnet18 --pretrained False --shift-depth 1000 --shift-type PS --optimizer radam --lr 0.01
     ```
+    f) Train a DeepShift ResNet18 model on the CIFAR10 dataset from scratch with 8-bit fixed point activation (3-bits for integers and 5-bits for fractions):
+    ```
+    python cifar10.py --arch resnet18 --pretrained False --shift-depth 1000 --shift-type PS --optimizer radam --lr 0.01 -ab 3 5
+    ```
 
 
 ## Running the Bitwise Shift CUDA & CPU Kernels
