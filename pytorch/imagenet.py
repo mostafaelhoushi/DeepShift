@@ -66,7 +66,9 @@ parser.add_argument('-st', '--shift-type', default='PS', choices=['Q', 'PS'],
 parser.add_argument('-r', '--rounding', default='deterministic', choices=['deterministic', 'stochastic'],
                     help='type of rounding (default: deterministic)')
 parser.add_argument('-wb', '--weight-bits', type=int, default=5,
-                    help='number of bits to represent the weights') 
+                    help='number of bits to represent the weights')
+parser.add_argument('-ab', '--activation-bits', nargs='+', default=[16,16],
+                    help='number of integer and fraction bits to represent activation (fixed point format)') 
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N',
@@ -160,6 +162,10 @@ def main():
         args.world_size = int(os.environ["WORLD_SIZE"])
 
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
+
+    assert(len(args.activation_bits)==2, "activation-bits argument needs to be a tuple of 2 values representing number of integer bits and number of fraction bits, e.g., '3 5' for 8-bits fixed point or '3 13' for 16-bits fixed point")
+    [args.activation_integer_bits, args.activation_fraction_bits] = args.activation_bits
+    [args.activation_integer_bits, args.activation_fraction_bits] = [int(args.activation_integer_bits), int(args.activation_fraction_bits)]
 
     ngpus_per_node = torch.cuda.device_count()
     if args.multiprocessing_distributed:
