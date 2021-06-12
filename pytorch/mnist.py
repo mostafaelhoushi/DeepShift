@@ -7,6 +7,7 @@ import optim
 from torchvision import datasets, transforms
 import csv
 import distutils
+import distutils.util
 import os
 from contextlib import redirect_stdout
 import time
@@ -109,6 +110,8 @@ def main():
                         help='type of rounding (default: deterministic)')
     parser.add_argument('-wb', '--weight-bits', type=int, default=5,
                         help='number of bits to represent the shift weights') 
+    parser.add_argument('-ab', '--activation-bits', nargs='+', default=[16,16],
+                        help='number of integer and fraction bits to represent activation (fixed point format)')   
     parser.add_argument('-j', '--workers', default=1, type=int, metavar='N',
                         help='number of data loading workers (default: 1)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
@@ -146,6 +149,10 @@ def main():
                         help='whether using custom shift kernel')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
+
+    assert len(args.activation_bits)==2, "activation-bits argument needs to be a tuple of 2 values representing number of integer bits and number of fraction bits, e.g., '3 5' for 8-bits fixed point or '3 13' for 16-bits fixed point"
+    [args.activation_integer_bits, args.activation_fraction_bits] = args.activation_bits
+    [args.activation_integer_bits, args.activation_fraction_bits] = [int(args.activation_integer_bits), int(args.activation_fraction_bits)]
 
     if(args.evaluate is False and args.use_kernel is True):
         raise ValueError('Our custom kernel currently supports inference only, not training.')
@@ -203,7 +210,7 @@ def main():
         model.load_state_dict(state_dict)
 
     if args.shift_depth > 0:
-        model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda, rounding = args.rounding, weight_bits = args.weight_bits)
+        model, _ = convert_to_shift(model, args.shift_depth, args.shift_type, convert_all_linear=(args.type != 'linear'), convert_weights=True, use_kernel = args.use_kernel, use_cuda = use_cuda, rounding = args.rounding, weight_bits = args.weight_bits, act_integer_bits = args.activation_integer_bits, act_fraction_bits = args.activation_fraction_bits)
         model = model.to(device)
     elif args.use_kernel and args.shift_depth == 0:
         model = convert_to_unoptimized(model)

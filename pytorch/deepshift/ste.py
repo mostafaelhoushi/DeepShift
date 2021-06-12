@@ -16,15 +16,15 @@ def round_power_of_2(input, stochastic=False):
 
 class RoundFixedPoint(Function):
     @staticmethod 
-    def forward(ctx, input, act_fraction_bits=16, act_integer_bits=16):
-        return utils.round_to_fixed(input, act_fraction_bits, act_integer_bits)
+    def forward(ctx, input, act_integer_bits=16, act_fraction_bits=16):
+        return utils.round_to_fixed(input, act_integer_bits, act_fraction_bits)
 
     @staticmethod
     def backward(ctx, grad_output):
         return grad_output, None, None
 
-def round_fixed_point(input, act_fraction_bits=16, act_integer_bits=16):
-    return RoundFixedPoint.apply(input, act_fraction_bits, act_integer_bits)
+def round_fixed_point(input, act_integer_bits=16, act_fraction_bits=16):
+    return RoundFixedPoint.apply(input, act_integer_bits, act_fraction_bits)
 
 class RoundFunction(Function):
     @staticmethod 

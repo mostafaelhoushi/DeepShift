@@ -4,8 +4,11 @@ import math
 
 import deepshift.kernels
 
-def round_to_fixed(input, fraction_bits=16, integer_bits=16): 
-    assert integer_bits >= 1, integer_bits 
+def round_to_fixed(input, integer_bits=16, fraction_bits=16): 
+    assert integer_bits >= 1, integer_bits
+    # TODO: Deal with unsigned tensors where there is no sign bit
+    #       which is the case with activations to convolution that 
+    #       are usually the output of a Relu layer
     if integer_bits == 1: 
         return torch.sign(input) - 1 
     delta = math.pow(2.0, -(fraction_bits))
@@ -37,6 +40,16 @@ def round(x, rounding='deterministic'):
         return x_floor + torch.bernoulli(x - x_floor)
     else:
         return x.round()
+
+def clampabs(input, min, max):
+    assert(min >= 0 and max >=0)
+
+    input[input > max] = max
+    input[input < -max] = -max
+
+    input[(input > torch.zeros_like(input)) & (input < min)] = min
+    input[(input < torch.zeros_like(input)) & (input > -min)] = -min
+    return input 
 
 class ConcWeight():
     def __init__(self, data=None, base=0, bits=8):
