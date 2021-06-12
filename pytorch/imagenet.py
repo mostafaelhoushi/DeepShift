@@ -7,6 +7,7 @@ import warnings
 import sys
 import csv
 import distutils
+import distutils.util
 from contextlib import redirect_stdout
 from collections import OrderedDict
 import torch
