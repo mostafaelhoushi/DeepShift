@@ -115,8 +115,16 @@ python imagenet.py --arch resnet18 -e --pretrained True --use-kernel True
 
 | Model | Original | DeepShift-Q | DeepShift-PS |
 |-------| -------- | ----------- | ------------ |
-| Simple FC Model | 96.92% | 97.03% | 98.26% |
-| Simple Conv Model | 98.75% | 98.81% | 99.12% |
+| Simple FC Model | 96.92% <span id="a1">[[1]](#f1)</span> | 97.03% <span id="a2">[[2]](#f2)</span> | 98.26% <span id="a3">[[3]](#f3)</span> |
+| Simple Conv Model | 98.75% <span id="a4">[[4]](#f4)</span> | 98.81% <span id="a5">[[5]](#f5)</span> | 99.12% <span id="a6">[[6]](#f6)</span> |
+
+Commands to reproduce results:
+1. <span id="f1"></span> `python mnist.py` [$\hookleftarrow$](#a1)
+2. <span id="f2"></span> `python mnist.py --shift-depth 1000 --shift-type Q` [$\hookleftarrow$](#a2)
+3. <span id="f3"></span> `python mnist.py --shift-depth 1000 --shift-type PS --opt radam` [$\hookleftarrow$](#a3)
+4. <span id="f4"></span> `python mnist.py --type conv` [$\hookleftarrow$](#a4)
+5. <span id="f5"></span> `python mnist.py --type conv --shift-depth 1000 --shift-type Q` [$\hookleftarrow$](#a5)
+6. <span id="f6"></span> `python mnist.py --type conv --shift-depth 1000 --shift-type PS --opt radam` [$\hookleftarrow$](#a6)
 
 #### Train from Pre-Trained
 
