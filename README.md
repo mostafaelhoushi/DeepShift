@@ -63,7 +63,18 @@ pip install -r requirements.txt
 ```
 cd pytorch
 ```
-7. Now you can run the different scripts with different options, e.g.,
+7. To list all the available options, you may run:
+```
+python <dataset>.py --help
+```
+where `<dataset>` can be either `mnist`, `cifar10`, `imagenet`. 
+
+When you run any training or evaluation script, you will have the model binary file as well as the training log in `./models/<dataset>/<arch>/<shift-type><shift-depth><weight-bit-width><desc>` where:
+- `<shift-type>` is either `shift_q` if you pass `--shift-type Q`, `shift_ps` if you pass `--shift-type PS`, or `shift_0` if you are running the default FP32 baseline
+- `<shift-depth>` is the number of layers from the start of the model that have been converted to DeepShift. This is determined by the `shift-depth` argument
+-   
+
+8. Now you can run the different scripts with different options, e.g.,
     a) Train a DeepShift simple fully-connected model on the MNIST dataset, using the PS apprach:
     ```
     python mnist.py --shift-depth 3 --shift-type PS --optimizer radam
