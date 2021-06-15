@@ -125,30 +125,30 @@ python imagenet.py --arch resnet18 -e --pretrained True --use-kernel True
 
 | Model | Original | DeepShift-Q | DeepShift-PS |
 |-------| -------- | ----------- | ------------ |
-| Simple FC Model | 96.92% <span id="a1">[[1]](#f1)</span> | 97.03% <span id="a2">[[2]](#f2)</span> | 98.26% <span id="a3">[[3]](#f3)</span> |
-| Simple Conv Model | 98.75% <span id="a4">[[4]](#f4)</span> | 98.81% <span id="a5">[[5]](#f5)</span> | 99.12% <span id="a6">[[6]](#f6)</span> |
+| Simple FC Model | 96.92% [[1]](#f1) | 97.03% [[2]](#f2) | 98.26% [[3]](#f3) |
+| Simple Conv Model | 98.75% [[4]](#f4) | 98.81% [[5]](#f5) | 99.12% [[6]](#f6) |
 
 Commands to reproduce results:
-1. <span id="f1"></span> `python mnist.py` [$\hookleftarrow$](#a1)
-2. <span id="f2"></span> `python mnist.py --shift-depth 1000 --shift-type Q` [$\hookleftarrow$](#a2)
-3. <span id="f3"></span> `python mnist.py --shift-depth 1000 --shift-type PS --opt radam` [$\hookleftarrow$](#a3)
-4. <span id="f4"></span> `python mnist.py --type conv` [$\hookleftarrow$](#a4)
-5. <span id="f5"></span> `python mnist.py --type conv --shift-depth 1000 --shift-type Q` [$\hookleftarrow$](#a5)
-6. <span id="f6"></span> `python mnist.py --type conv --shift-depth 1000 --shift-type PS --opt radam` [$\hookleftarrow$](#a6)
+1. <span id="f1"></span> `python mnist.py`
+2. <span id="f2"></span> `python mnist.py --shift-depth 1000 --shift-type Q`
+3. <span id="f3"></span> `python mnist.py --shift-depth 1000 --shift-type PS --opt radam`
+4. <span id="f4"></span> `python mnist.py --type conv`
+5. <span id="f5"></span> `python mnist.py --type conv --shift-depth 1000 --shift-type Q`
+6. <span id="f6"></span> `python mnist.py --type conv --shift-depth 1000 --shift-type PS --opt radam`
 
 #### Train from Pre-Trained
 
 | Model | Original | DeepShift-Q | DeepShift-PS |
 |-------| -------- | ----------- | ------------ |
-| Simple FC Model | 96.92% | 97.85% <span id="a7">[[7]](#f7)</span> | 98.26% <span id="a8">[[8]](#f8)</span> |
-| Simple Conv Model | 98.75% | 99.15% <span id="a9">[[9]](#f9)</span> | 99.16% <span id="a10">[[10]](#f10)</span> |
+| Simple FC Model | 96.92% | 97.85% [[7]](#f7) | 98.26% [[8]](#f8) |
+| Simple Conv Model | 98.75% | 99.15% [[9]](#f9) | 99.16% [[10]](#f10) |
 
 Commands to reproduce results (assumes you have run commands [1] and [2] in order to have the baseline pretrained weights):
 
-7. <span id="f7"></span> `python mnist.py --weights ./models/mnist/simple_linear/shift_0/weights.pth --shift-depth 1000 --shift-type Q --desc from_pretrained` [$\hookleftarrow$](#a7) 
-8. <span id="f8"></span> `python mnist.py --weights ./models/mnist/simple_linear/shift_0/weights.pth --shift-depth 1000 --shift-type PS --opt radam --desc from_pretrained` [$\hookleftarrow$](#a8) 
-9. <span id="f9"></span> `python mnist.py --type conv --weights ./models/mnist/simple_conv/shift_0/weights.pth --shift-depth 1000 --shift-type Q --desc from_pretrained` [$\hookleftarrow$](#a9) 
-10. <span id="f10"></span> `python mnist.py --type conv --weights ./models/mnist/simple_conv/shift_0/weights.pth --shift-depth 1000 --shift-type PS --opt radam --desc from_pretrained` [$\hookleftarrow$](#a10) 
+7. <span id="f7"></span> `python mnist.py --weights ./models/mnist/simple_linear/shift_0/weights.pth --shift-depth 1000 --shift-type Q --desc from_pretrained`  
+8. <span id="f8"></span> `python mnist.py --weights ./models/mnist/simple_linear/shift_0/weights.pth --shift-depth 1000 --shift-type PS --opt radam --desc from_pretrained`  
+9. <span id="f9"></span> `python mnist.py --type conv --weights ./models/mnist/simple_conv/shift_0/weights.pth --shift-depth 1000 --shift-type Q --desc from_pretrained`  
+10. <span id="f10"></span> `python mnist.py --type conv --weights ./models/mnist/simple_conv/shift_0/weights.pth --shift-depth 1000 --shift-type PS --opt radam --desc from_pretrained` 
 
 ### CIFAR10
 
