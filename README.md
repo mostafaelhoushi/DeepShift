@@ -154,14 +154,20 @@ Commands to reproduce results (assumes you have run commands [[1]](#f1) and [[2]
 
 #### Train from Scratch
 
-| Model | Original | DeepShift-Q | DeepShift-PS |
+| Model | Original [[11]](#f11) | DeepShift-Q [[12](#f12) | DeepShift-PS [[13]](#f13) |
 |-------| -------- | ----------- | ------------ |
-| ResNet18 | 94.45% | 94.42% | 93.20% |
-| MobileNetv2 | 93.57% | 93.63% | 92.64% |
-| ResNet20 | 91.79% | 89.85% | 88.84% |
-| ResNet32 | 92.39% | 91.13% | 89.97% |
-| ResNet44 | 92.84% | 91.29% | 90.92% |
-| ResNet56 | 93.46% | 91.52% | 91.11% |
+| resnet18 | 94.45% | 94.42% | 93.20% |
+| mobilenetv2 | 93.57% | 93.63% | 92.64% |
+| resnet20 | 91.79% | 89.85% | 88.84% |
+| resnet32 | 92.39% | 91.13% | 89.97% |
+| resnet44 | 92.84% | 91.29% | 90.92% |
+| resnet56 | 93.46% | 91.52% | 91.11% |
+
+Commands to reproduce results:
+
+11.  <span id="f11"></span> `python cifar10.py --arch <Model>` 
+12.  <span id="f12"></span> `python cifar10.py --arch <Model> --shift-depth 1000 --shift-type Q`
+13.  <span id="f13"></span> `python cifar10.py --arch <Model> --shift-depth 1000 --shift-type PS --opt radam`
 
 #### Train from Pre-Trained
 
