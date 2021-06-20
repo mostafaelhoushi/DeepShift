@@ -143,7 +143,7 @@ Commands to reproduce results:
 | Simple FC Model | 96.92% | 97.85% [[7]](#f7) | 98.26% [[8]](#f8) |
 | Simple Conv Model | 98.75% | 99.15% [[9]](#f9) | 99.16% [[10]](#f10) |
 
-Commands to reproduce results (assumes you have run commands [1] and [2] in order to have the baseline pretrained weights):
+Commands to reproduce results (assumes you have run commands [[1]](#f1) and [[2]](#f2) in order to have the baseline pretrained weights):
 
 7. <span id="f7"></span> `python mnist.py --weights ./models/mnist/simple_linear/shift_0/weights.pth --shift-depth 1000 --shift-type Q --desc from_pretrained`  
 8. <span id="f8"></span> `python mnist.py --weights ./models/mnist/simple_linear/shift_0/weights.pth --shift-depth 1000 --shift-type PS --opt radam --desc from_pretrained`  
