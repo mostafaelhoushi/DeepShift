@@ -214,19 +214,22 @@ Accuracies shown are Top1 / Top5.
 Commands to reproduce results:
 
 22.  <span id="f22"></span> a) To evaluate PyTorch pretrained models: `python imagenet.py --arch <Model> --pretrained True -e <path_to_imagenet_dataset>` OR b) To train from scratch: `python imagenet.py --arch <Model> --pretrained False  <path_to_imagenet_dataset>`
-23. <span id="f23"></span> `python imagenet.py  --arch <Model> --pretrained False --shift-depth 1000 --shift-type Q --desc from_scratch --lr 0.01`  
-24. <span id="f24"></span> `python imagenet.py  --arch <Model> --pretrained False --shift-depth 1000 --shift-type PS --desc from_scratch --lr 0.01 --opt radam`  
+23. <span id="f23"></span> `python imagenet.py  --arch <Model> --pretrained False --shift-depth 1000 --shift-type Q --desc from_scratch --lr 0.01 <path_to_imagenet_dataset>`  
+24. <span id="f24"></span> `python imagenet.py  --arch <Model> --pretrained False --shift-depth 1000 --shift-type PS --desc from_scratch --lr 0.01 --opt radam <path_to_imagenet_dataset>`  
 
 #### Train from Pre-Trained
 
-| Model | Original | DeepShift-Q | DeepShift-PS |
+| Model | Original [[22]](#f22) | DeepShift-Q [[25]](#f25) | DeepShift-PS [[26]](#f26) |
 | ----- | -------- | ----------- | ------------ | 
-| ResNet18 | 69.76% / 89.08% | 69.56% / 89.17% | 69.27% / 89.00% |
-| ResNet50 | 76.13% / 92.86% | 76.33% / 93.05% | 75.93% / 92.90% |
-| GoogleNet | 69.78% / 89.53% | 70.73% / 90.17% | 69.87% / 89.62% |
-| VGG16 |  71.59% / 90.38% | 71.56% / 90.48% | 71.39% / 90.33% |
-| AlexNet | 56.52% / 79.07% | 55.81% / 78.79% | 55.90% / 78.73% |
-| DenseNet121 | 74.43% / 91.97% | 74.52% / 92.06% | TBD |
+| resnet18 | 69.76% / 89.08% | 69.56% / 89.17% | 69.27% / 89.00% |
+| resnet50 | 76.13% / 92.86% | 76.33% / 93.05% | 75.93% / 92.90% |
+| googlenet | 69.78% / 89.53% | 70.73% / 90.17% | 69.87% / 89.62% |
+| vgg16 |  71.59% / 90.38% | 71.56% / 90.48% | 71.39% / 90.33% |
+| alexnet | 56.52% / 79.07% | 55.81% / 78.79% | 55.90% / 78.73% |
+| densenet121 | 74.43% / 91.97% | 74.52% / 92.06% | TBD |
+
+25. <span id="f25"></span> `python imagenet.py  --arch <Model> --pretrained True --shift-depth 1000 --shift-type Q --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15 <path_to_imagenet_dataset>`  
+26. <span id="f26"></span> `python imagenet.py  --arch <Model> --pretrained True --shift-depth 1000 --shift-type PS --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15 --opt radam <path_to_imagenet_dataset>`  
 
 #### Using Fewer Bits
 
