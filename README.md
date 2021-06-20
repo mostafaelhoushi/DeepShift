@@ -205,11 +205,17 @@ Accuracies shown are Top1 / Top5.
 
 #### Train from Scratch
 
-| Model | Original | DeepShift-Q | DeepShift-PS |
+| Model | Original [[22]](#f22) | DeepShift-Q [[23]](#f23) | DeepShift-PS [[24]](#f24) |
 | ----- | -------- | ----------- | ------------ | 
-| ResNet18 | 69.76% / 89.08% | 65.32% / 86.29% | 65.34% / 86.05% |
-| ResNet50 | 76.13% / 92.86% | 70.70% / 90.20% | 71.90% / 90.20% |
-| VGG16 |  71.59% / 90.38% | 70.87% / 90.09% | TBD |
+| resnet18 | 69.76% / 89.08% | 65.32% / 86.29% | 65.34% / 86.05% |
+| resnet50 | 76.13% / 92.86% | 70.70% / 90.20% | 71.90% / 90.20% |
+| vgg16 |  71.59% / 90.38% | 70.87% / 90.09% | TBD |
+
+Commands to reproduce results:
+
+22.  <span id="f22"></span> a) To evaluate PyTorch pretrained models: `python imagenet.py --arch <Model> --pretrained True -e <path_to_imagenet_dataset>` OR b) To train from scratch: `python imagenet.py --arch <Model> --pretrained False  <path_to_imagenet_dataset>`
+23. <span id="f23"></span> `python imagenet.py  --arch <Model> --pretrained False --shift-depth 1000 --shift-type Q --desc from_scratch --lr 0.01`  
+24. <span id="f24"></span> `python imagenet.py  --arch <Model> --pretrained False --shift-depth 1000 --shift-type PS --desc from_scratch --lr 0.01 --opt radam`  
 
 #### Train from Pre-Trained
 
