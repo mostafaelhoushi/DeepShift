@@ -140,8 +140,8 @@ Commands to reproduce results:
 
 | Model | Original | DeepShift-Q | DeepShift-PS |
 |-------| -------- | ----------- | ------------ |
-| Simple FC Model | 96.92% | 97.85% [[7]](#f7) | 98.26% [[8]](#f8) |
-| Simple Conv Model | 98.75% | 99.15% [[9]](#f9) | 99.16% [[10]](#f10) |
+| Simple FC Model | 96.92% [[1]](#f1) | 97.85% [[7]](#f7) | 98.26% [[8]](#f8) |
+| Simple Conv Model | 98.75% [[4]](#f4) | 99.15% [[9]](#f9) | 99.16% [[10]](#f10) |
 
 Commands to reproduce results (assumes you have run commands [[1]](#f1) and [[2]](#f2) in order to have the baseline pretrained weights):
 
@@ -154,7 +154,7 @@ Commands to reproduce results (assumes you have run commands [[1]](#f1) and [[2]
 
 #### Train from Scratch
 
-| Model | Original [[11]](#f11) | DeepShift-Q [[12](#f12) | DeepShift-PS [[13]](#f13) |
+| Model | Original [[11]](#f11) | DeepShift-Q [[12]](#f12) | DeepShift-PS [[13]](#f13) |
 |-------| -------- | ----------- | ------------ |
 | resnet18 | 94.45% | 94.42% | 93.20% |
 | mobilenetv2 | 93.57% | 93.63% | 92.64% |
@@ -171,10 +171,15 @@ Commands to reproduce results:
 
 #### Train from Pre-Trained
 
-| Model | Original | DeepShift-Q | DeepShift-PS |
+| Model | Original [[11]](#f11) | DeepShift-Q [[14]](#f14) | DeepShift-PS [[15]](#f15) |
 |-------| -------- | ----------- | ------------ |
-| ResNet18 | 94.45% | 94.25% | 94.12% |
-| MobileNetv2 | 93.57% | 93.04% | 92.78% |
+| resnet18 | 94.45% | 94.25% | 94.12% |
+| mobilenetv2 | 93.57% | 93.04% | 92.78% |
+
+Commands to reproduce results (assumes you have run command [[11]](#f11) for the corresponding architecture in order to have the baseline pretrained weights):
+
+14. <span id="f14"></span> `python cifar10.py  --arch <Model> --weights ./models/cifar10/<Model>/shift_0/checkpoint.pth.tar --shift-depth 1000 --shift-type Q --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15`  
+15. <span id="f15"></span> `python cifar10.py  --arch <Model> --weights ./models/cifar10/<Model>/shift_0/checkpoint.pth.tar --shift-depth 1000 --shift-type PS --opt radam --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15`  
 
 #### Using Fewer Bits
 
