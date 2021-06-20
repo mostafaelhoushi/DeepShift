@@ -185,11 +185,20 @@ Commands to reproduce results (assumes you have run command [[11]](#f11) for the
 
 | Model | Type | Weight Bits | Train from Scratch | Train from Pre-Trained |
 |-------| ---- | ----------- | ------------------ | ---------------------- |
-| ResNet18 | Original | 32 | 94.45% | - |
-| ResNet18 | DeepShift-PS | 5 | 93.20% | 94.12% |
-| ResNet18 | DeepShift-PS | 4 | 94.12% | 94.13% |
-| ResNet18 | DeepShift-PS | 3 | 92.85% | 91.16% |
-| ResNet18 | DeepShift-PS | 2 | 92.80% | 90.68% |
+| resnet18 | Original | 32 | 94.45%  [[11]](#f11) | - |
+| resnet18 | DeepShift-PS | 5 | 93.20% [[13]](#f13) | 94.12% [[15]](#f15) |
+| resnet18 | DeepShift-PS | 4 | 94.12% [[16]](#f16) | 94.13% [[17]](#f17) |
+| resnet18 | DeepShift-PS | 3 | 92.85% [[18]](#f18) | 91.16% [[19]](#f19) |
+| resnet18 | DeepShift-PS | 2 | 92.80% [[20]](#f20) | 90.68% [[21]](#f21) |
+
+Commands to reproduce results (assumes you have run command [[11]](#f11) for the corresponding architecture in order to have the baseline pretrained weights):
+
+16.  <span id="f16"></span> `python cifar10.py --arch <Model> --shift-depth 1000 --shift-type PS -wb 4 --opt radam`
+17.  <span id="f17"></span> `python cifar10.py --arch <Model>  --weights ./models/cifar10/<Model>/shift_0/checkpoint.pth.tar --shift-depth 1000 --shift-type PS -wb 4 --opt radam  --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15`
+18.  <span id="f18"></span> `python cifar10.py --arch <Model> --shift-depth 1000 --shift-type PS -wb 3 --opt radam`
+19.  <span id="f19"></span> `python cifar10.py --arch <Model>  --weights ./models/cifar10/<Model>/shift_0/checkpoint.pth.tar --shift-depth 1000 --shift-type PS -wb 3 --opt radam  --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15`
+20.  <span id="f20"></span> `python cifar10.py --arch <Model> --shift-depth 1000 --shift-type PS -wb 2 --opt radam`
+21.  <span id="f21"></span> `python cifar10.py --arch <Model>  --weights ./models/cifar10/<Model>/shift_0/checkpoint.pth.tar --shift-depth 1000 --shift-type PS -wb 2 --opt radam  --desc from_pretrained --lr 1e-3 --lr-step 5 --epochs 15`
 
 ### ImageNet
 Accuracies shown are Top1 / Top5.
