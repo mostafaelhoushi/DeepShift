@@ -1,7 +1,21 @@
 # DeepShift
-This is project is the implementation of the [DeepShift: Towards Multiplication-Less Neural Networks](https://arxiv.org/abs/1905.13298) paper, that aims to replace multiplications in a neural networks with bitwise shift (and sign change).
+This is project is the implementation of the **DeepShift: Towards Multiplication-Less Neural Networks**  paper, that aims to replace multiplications in a neural networks with bitwise shift (and sign change).
+
+[[Paper](https://openaccess.thecvf.com/content/CVPR2021W/MAI/papers/Elhoushi_DeepShift_Towards_Multiplication-Less_Neural_Networks_CVPRW_2021_paper.pdf)] - [[arXiv](https://arxiv.org/abs/1905.13298)] - [[Video](https://www.youtube.com/watch?v=tdpmvy2Cab0&t=34430s)] - [[Presentation](https://github.com/mostafaelhoushi/DeepShift/releases/download/v1.0/Presentation.pptx)]
 
 This research project was done at Huawei Technologies.
+
+If you find this code useful, please cite our paper:
+```
+@InProceedings{Elhoushi_2021_CVPR,
+    author    = {Elhoushi, Mostafa and Chen, Zihao and Shafiq, Farhan and Tian, Ye Henry and Li, Joey Yiwei},
+    title     = {DeepShift: Towards Multiplication-Less Neural Networks},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
+    month     = {June},
+    year      = {2021},
+    pages     = {2359-2368}
+}
+```
 
 ##### Table of Contents  
   - [Overview](#overview)
