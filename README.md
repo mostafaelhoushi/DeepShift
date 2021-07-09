@@ -249,16 +249,17 @@ Commands to reproduce results:
 
 | Model | Type | Weight Bits | Train from Scratch | Train from Pre-Trained |
 |-------| ---- | ----------- | ------------------ | ---------------------- |
-| ResNet18 | Original | 32 | 69.76% / 89.08% | - |
-| ResNet18 | DeepShift-Q | 5 | 65.34% / 86.05% | 69.56% / 89.17% |
-| ResNet18 | DeepShift-PS | 5 | 65.34% / 86.05% | 69.27% / 89.00% |
-| ResNet18 | DeepShift-Q | 4 | TBD | 69.56% / 89.14% |
-| ResNet18 | DeepShift-PS | 4 | 67.07% / 87.36% | 69.02% / 88.73% |
-| ResNet18 | DeepShift-PS | 3 | 63.11% / 84.45% | TBD |
-| ResNet18 | DeepShift-PS | 2 | 60.80% / 83.01% | TBD |
+| resNet18 | Original | 32 | 69.76% / 89.08% | - |
+| resNet18 | DeepShift-Q | 5 | 65.34% / 86.05% | 69.56% / 89.17% |
+| resNet18 | DeepShift-PS | 5 | 65.34% / 86.05% | 69.27% / 89.00% |
+| resNet18 | DeepShift-Q | 4 | TBD | 69.56% / 89.14% |
+| resNet18 | DeepShift-PS | 4 | 67.07% / 87.36% | 69.02% / 88.73% |
+| resNet18 | DeepShift-PS | 3 | 63.11% / 84.45% | TBD |
+| resNet18 | DeepShift-PS | 2 | 60.80% / 83.01% | TBD |
 
 ### Binary Files of Trained Models
-TBD
+* CIFAR10:
+    * DeepShift PS, 5-bit Weights, Train from Scratch: [checkpoint.pth.tar](https://github.com/mostafaelhoushi/DeepShift/releases/download/v1.0/cifar10_resnet18_shift_ps_wb_5_from_scratch_checkpoint.pth.tar)
 
 ## Code WalkThrough
 * `pytorch`: directory containing implementation, tests, and saved models using PyTorch
